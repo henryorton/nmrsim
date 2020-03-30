@@ -137,7 +137,7 @@ function populateVariables () {
     spin.amplitude = parseFloat($(`.spins .spin.${i} .amplitude`).val())
     spin.offset = 2.0 * math.PI * parseFloat($(`.spins .spin.${i} .offset`).val())
     spin.r2 = 1.0 / parseFloat($(`.spins .spin.${i} .t2`).val())
-    spin.phase = 2.0 * math.PI * parseFloat($(`.spins .spin.${i} .phase`).val())
+    spin.phase = (math.PI / 180.0) * parseFloat($(`.spins .spin.${i} .phase`).val())
   })
 }
 
@@ -156,6 +156,7 @@ function calculateSignal () {
     spin => {
       timeDomain = math.chain(timeAxis)
         .multiply(spin.exponent())
+        .add(math.complex(0.0, spin.phase))
         .exp()
         .multiply(spin.amplitude)
         .add(timeDomain)
@@ -186,7 +187,7 @@ function initPlot (canvas_id, axis) {
 
   var canvas = d3.select(canvas_id);
   var svg = canvas.append("g").attr("class", "frame")
-  var margin = {top: 20, right: 20, bottom: 40, left: 40};
+  var margin = {top: 20, right: 20, bottom: 30, left: 30};
   var width = canvas.attr("width") - margin.left - margin.right;
   var height = canvas.attr("height") - margin.top - margin.bottom;
 
