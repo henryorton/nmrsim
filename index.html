@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+  <link rel="stylesheet" type="text/css" href="main.css">
+  <head>
+    <title>NMRsim</title>
+  </head>
+  <body>
+
+  <div class="parameter-input">
+    <fieldset>
+      <legend>Spins</legend>
+      <div class="spins">
+
+        <div class="spin 0">
+          <label>Spin 1:</label><br>
+
+          <label>I</label>
+          <input type="text" class="param amplitude" value="1.0"><br>
+
+          <label>&Omega; (Hz)</label>
+          <input type="text" class="param offset" value="2.0"><br>
+
+          <label>&Phi; (&#176;)</label>
+          <input type="text" class="param phase" value="0.0"><br>
+
+          <label>T2 (s)</label>
+          <input type="text" class="param t2" value="1.0"><br>
+        </div>
+
+        <div class="spin 1">
+          <label>Spin 2:</label><br>
+
+          <label>I</label>
+          <input type="text" class="param amplitude" value="0.0"><br>
+
+          <label>&Omega; (Hz)</label>
+          <input type="text" class="param offset" value="2.0"><br>
+
+          <label>&Phi; (&#176;)</label>
+          <input type="text" class="param phase" value="0.0"><br>
+
+          <label>T2 (s)</label>
+          <input type="text" class="param t2" value="1.0"><br>
+        </div>
+
+      </div>
+    </fieldset>
+
+    <fieldset class="acquisitionParameters">
+      <legend>Acquisition Parameters</legend>
+
+      <input type="radio" id="numberPointsCheck" name="checkVar">
+      <label for="numberPoints">Number points:</label>
+      <input id="numberPoints" type="text" value="128"><br>
+
+      <input type="radio" id="acquisitionTimeCheck" name="checkVar">
+      <label for="acquisitionTime">Acquisition time (s):</label>
+      <input type="text" id="acquisitionTime" value="1"><br>
+
+      <input type="radio" id="spectralWidthCheck" name="checkVar">
+      <label for="spectralWidth">Spectral width (Hz):</label>
+      <input type="text" id="spectralWidth" value="128"><br>
+
+      <input type="radio" id="dwellTimeCheck" name="checkVar">
+      <label for="dwellTime">Dwell time (s):</label>
+      <input type="text" id="dwellTime" value="0.0078125"><br>
+
+      <input type="radio" id="carrierFrequencyCheck" name="checkVar">
+      <label for="carrierFrequency">Carrier frequency (Hz):</label>
+      <input type="text" id="carrierFrequency" value="0"><br>
+
+    </fieldset>
+
+    <button onclick="update()">Plot</button>
+
+  </div>
+
+  <div class="plots">
+
+    <div id="plot-time-domain">
+      <svg id="plot-time-domain-svg" width="600" height="300"></svg>
+    </div>
+
+    <div id="plot-freq-domain">
+      <svg id="plot-freq-domain-svg" width="600" height="300"></svg>
+    </div>
+
+  </div>
+
+
+  </body>
+  <script type="text/javascript" src="js/jquery.js"></script>
+  <script type="text/javascript" src="js/d3.js"></script>
+  <script type="text/javascript" src="js/math.js"></script>
+  <script type="text/javascript" src="js/fft.js"></script>
+  <script type="text/javascript" src="main.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</html>

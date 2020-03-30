@@ -1,0 +1,35 @@
+.line_real {
+    fill: none;
+    stroke: #ff0000;
+    stroke-width: 1;
+}
+
+.line_imag {
+    fill: none;
+    stroke: #0000ff;
+    stroke-width: 1;
+}
+
+.spins {
+  padding: 5px;
+  columns: 2;
+}
+
+body {
+  display: grid;
+  grid-template-columns: auto auto;
+  padding: 20px;
+}
+
+.spins .param {
+  width: 40px;
+}
+
+fieldset {
+  margin: 10px;
+}
+
+label {
+  display: inline-block;
+  text-align: right;
+}​
