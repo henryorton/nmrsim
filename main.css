@@ -1,7 +1,39 @@
+
+
+.plot-spin-vector .circle {
+  stroke:black;
+  stroke-width: 1;
+}
+
+.plot-spin-vector .vector {
+  stroke: black;
+  stroke-width: 1;
+}
+
+.plot-spin-vector .vector.arrowhead{
+  stroke: black;
+  stroke-width: 0;
+}
+
+.plot-spin-vector .vector.sum {
+  stroke: magenta;
+  stroke-width: 1;
+}
+
+.plot-spin-vector .sum.arrowhead {
+  fill: magenta;
+  stroke-width: 0;
+}
+
 .line_real {
-    fill: none;
-    stroke: #ff0000;
-    stroke-width: 1;
+  fill: none;
+  stroke: #ff0000;
+  stroke-width: 1;
+}
+
+.line_real.arrowhead  {
+  fill:#ff0000;
+  stroke-width:0;
 }
 
 .line_imag {
@@ -10,26 +42,63 @@
     stroke-width: 1;
 }
 
-.spins {
-  padding: 5px;
-  columns: 2;
+.line_imag.arrowhead  {
+  fill:#0000ff;
+  stroke-width:0;
 }
 
 body {
   display: grid;
   grid-template-columns: auto auto;
   padding: 20px;
+  vertical-align: middle;  
 }
 
 .spins .param {
   width: 40px;
 }
 
+.plot-time-domain {
+  overflow:hidden;
+}
+
+.plot-freq-domaim {
+  overflow: hidden;
+}
+
+.plot-spin-vector {
+  overflow: hidden;
+}
+
 fieldset {
   margin: 10px;
 }
 
-label {
-  display: inline-block;
-  text-align: right;
-}​
+
+input[type='text'] {
+  width:60px;
+}
+
+.spins .parameters {
+  width:40%;
+  float: left;
+}
+
+.spins {
+  position: relative;
+}
+
+.plot-spin-vector {
+  width:60%;
+  float: left;
+  overflow:hidden;
+}
+
+
+
+
+
+
+
+
+

@@ -7,12 +7,23 @@
   <body>
 
   <div class="parameter-input">
-    <fieldset>
-      <legend>Spins</legend>
-      <div class="spins">
+    <fieldset class="experimentalParameters">
+      <legend>Experimental Parameters</legend>
 
-        <div class="spin 0">
-          <label>Spin 1:</label><br>
+      <input type="radio" id="experimentalNoiseCheck" name="checkVar">
+      <label for="experimentalNoise">Experimental noise (&sigma;):</label>
+      <input id="experimentalNoise" type="text" value="0.0"><br>
+
+      <label for="quadratureDetection" >Quadrature detection:</label>
+      <input id="quadratureDetection" type="checkbox" checked><br>
+
+    </fieldset>
+
+    <fieldset class="spins">
+      <legend>Spins</legend>
+      <div class="parameters">
+        <fieldset class="spin spin0">
+          <legend>Spin I:</legend>
 
           <label>I</label>
           <input type="text" class="param amplitude" value="1.0"><br>
@@ -25,10 +36,10 @@
 
           <label>T2 (s)</label>
           <input type="text" class="param t2" value="1.0"><br>
-        </div>
+        </fieldset>
 
-        <div class="spin 1">
-          <label>Spin 2:</label><br>
+        <fieldset class="spin spin1">
+          <legend>Spin II:</legend>
 
           <label>I</label>
           <input type="text" class="param amplitude" value="0.0"><br>
@@ -41,13 +52,15 @@
 
           <label>T2 (s)</label>
           <input type="text" class="param t2" value="1.0"><br>
-        </div>
-
+        </fieldset>
+      </div>
+      <div class="plot-spin-vector">
+        <svg id="plot-spin-vector-svg" width="280" height="280"></svg>
       </div>
     </fieldset>
 
     <fieldset class="acquisitionParameters">
-      <legend>Acquisition Parameters</legend>
+      <legend>Acquisition parameters</legend>
 
       <input type="radio" id="numberPointsCheck" name="checkVar">
       <label for="numberPoints">Number points:</label>
@@ -71,23 +84,45 @@
 
     </fieldset>
 
+    <fieldset class="processingParameters">
+      <legend>Processing parameters</legend>
+
+      <input type="radio" id="zeroFillingCheck" name="checkVar">
+      <label for="zeroFilling">Zero filling:</label>
+      <input id="zeroFilling" type="text" value="128"><br>
+
+      <input type="radio" id="phaseCorrection0Check" name="checkVar">
+      <label for="phaseCorrection0">Phase corr. 0th (&#176;):</label>
+      <input type="text" id="phaseCorrection0" value="0"><br>
+
+      <input type="radio" id="phaseCorrection1Check" name="checkVar">
+      <label for="phaseCorrection1">Phase corr. 1st (&#176;):</label>
+      <input type="text" id="phaseCorrection1" value="0"><br>
+
+      <label for="windowFunction">Window function:</label>
+      <select id="windowFunction">
+        <option value="none">None</option>
+        <option value="exponential">Exponential</option>
+        <option value="gaussian">Gaussian</option>
+        <option value="trigonometric">Trigonometric</option>
+      </select>
+
+    </fieldset>
+
+
     <button onclick="update()">Plot</button>
 
   </div>
 
   <div class="plots">
-    <fieldset>
+    <fieldset class="plot-time-domain">
       <legend>Time domain</legend>
-      <div id="plot-time-domain">
-        <svg id="plot-time-domain-svg" width="600" height="300"></svg>
-      </div>
+          <svg id="plot-time-domain-svg" width="600" height="300"></svg>
     </fieldset>
 
-    <fieldset>
+    <fieldset class="plot-freq-domain">
       <legend>Frequency domain</legend>
-      <div id="plot-freq-domain">
-        <svg id="plot-freq-domain-svg" width="600" height="300"></svg>
-      </div>
+      <svg id="plot-freq-domain-svg" width="600" height="300"></svg>
     </fieldset>
 
   </div>

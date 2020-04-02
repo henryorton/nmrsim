@@ -11,6 +11,15 @@ class Spin {
   exponent() {
     return math.complex(-this.r2, this.offset - 2*math.PI*carrierFrequency);
   }
+  evolution(time) {
+    let mag = math.chain(time)
+      .multiply(this.exponent())
+      .add(math.complex(0.0, this.phase))
+      .exp()
+      .multiply(this.amplitude)
+      .done()
+    return mag
+  }
 }
 
 class AcquisitionParameters {
@@ -118,6 +127,11 @@ var numberPoints;
 var acquisitionTime;
 var spectralWidth;
 var carrierFrequency;
+var experimentalNoise;
+var quadratureDetection;
+
+var zeroFilling;
+
 var timeAxis;
 var freqAxis;
 var timeDomain;
@@ -129,15 +143,19 @@ function updateNumberPoint () {
 }
 
 function populateVariables () {
+  zeroFilling = parseInt($("#zeroFilling").val());
   numberPoints = parseInt($("#numberPoints").val());
   acquisitionTime = parseFloat($("#acquisitionTime").val());
   spectralWidth = parseFloat($("#spectralWidth").val());
   carrierFrequency = parseFloat($("#carrierFrequency").val());
+  experimentalNoise = parseFloat($("#experimentalNoise").val());
+  quadratureDetection = $("#quadratureDetection").is($(":checked"));
+
   spins.forEach( (spin, i) => {
-    spin.amplitude = parseFloat($(`.spins .spin.${i} .amplitude`).val())
-    spin.offset = 2.0 * math.PI * parseFloat($(`.spins .spin.${i} .offset`).val())
-    spin.r2 = 1.0 / parseFloat($(`.spins .spin.${i} .t2`).val())
-    spin.phase = (math.PI / 180.0) * parseFloat($(`.spins .spin.${i} .phase`).val())
+    spin.amplitude = parseFloat($(`.spins .spin${i} .amplitude`).val())
+    spin.offset = 2.0 * math.PI * parseFloat($(`.spins .spin${i} .offset`).val())
+    spin.r2 = 1.0 / parseFloat($(`.spins .spin${i} .t2`).val())
+    spin.phase = (math.PI / 180.0) * parseFloat($(`.spins .spin${i} .phase`).val())
   })
 }
 
@@ -148,6 +166,11 @@ function initAxes () {
     timeAxis[i] = acquisitionTime * (i / numberPoints)
     freqAxis[i] = (0.5 - (i / numberPoints)) * spectralWidth + carrierFrequency
   }
+  noiseAxis = math.multiply(math.complex(0.5,0.5), 
+    math.random([numberPoints], -experimentalNoise, experimentalNoise)
+  )
+
+    
 }
 
 function calculateSignal () {
@@ -160,9 +183,15 @@ function calculateSignal () {
         .exp()
         .multiply(spin.amplitude)
         .add(timeDomain)
+        .add(noiseAxis)
         .done()
     }
   )
+  if (!quadratureDetection) {
+    timeDomain.forEach( (elem, i) => {
+      timeDomain[i].im = 0;
+    })
+  }
 }
 
 function processSignal () {
@@ -177,9 +206,11 @@ function processSignal () {
   )
 }
 
-var animationDuration = 800;
+var animationDuration = 200;
 var tdPlot = initPlot("#plot-time-domain-svg");
 var fqPlot = initPlot("#plot-freq-domain-svg");
+var vecPlot = initVectorPlot();
+initMouseOverEffects(tdPlot);
 
 
 
@@ -201,7 +232,7 @@ function initPlot (canvas_id, axis) {
 
   svg.append("g")
     .attr("class", "x_axis")
-    .attr("transform", "translate(0," + height + ")")
+    .attr("transform", `translate(0,${height})`)
 
   svg.append("g")
     .attr("class", "y_axis")
@@ -224,14 +255,172 @@ function initPlot (canvas_id, axis) {
     imag: svg.select(".line_imag"),
     xaxis: svg.select(".x_axis"),
     yaxis: svg.select(".y_axis"),
+    range: null
   }
 
   return plotData
 }
 
+
+
+
+
+function initMouseOverEffects (plot) {
+  var mouseG = plot.svg.append("g")
+      .attr("class", "mouse-over-effects");
+
+  mouseG.append("path") // this is the black vertical line to follow mouse
+    .attr("class", "mouse-line")
+    .style("stroke", "black")
+    .style("stroke-width", "1px")
+    .attr("visibility", "hidden")
+
+  mouseG.append('svg:rect') // append a rect to catch mouse movements on canvas
+    .attr('width', plot.width) // can't catch mouse events on a g element
+    .attr('height', plot.height)
+    .attr('fill', 'none')
+    .attr('pointer-events', 'all')
+    .on('mouseout', () => { // on mouse out hide line, circles and text
+      d3.select(".mouse-line")
+        .attr("visibility", "hidden");
+      d3.selectAll("#plot-spin-vector-svg .vector")
+        .attr("visibility", "hidden");
+    })
+    .on('mouseover', () => { // on mouse in show line, circles and text
+      d3.select(".mouse-line")
+        .attr("visibility", "visible");
+      d3.selectAll("#plot-spin-vector-svg .vector.sum")
+        .attr("visibility", "visible");
+      spins.forEach( (spin, i) => {
+        if (spin.amplitude) {
+          d3.select(`#plot-spin-vector-svg .vector.spin${i}`)
+            .attr("visibility", "visible")
+        }
+      })
+    })
+    .on('mousemove', () => { // mouse moving over canvas
+      let mouse = d3.mouse(d3.event.currentTarget);
+      let point = Math.round( (mouse[0]/plot.width) * numberPoints)
+      let time = timeAxis[point];
+      let loc = plot.xScale(time);
+      let mag = timeDomain[point];
+      if ( typeof loc == 'number') {
+        d3.select(".mouse-line")
+          .attr("d", () => `M${loc},${plot.height} ${loc},0`);
+        d3.select("#plot-spin-vector-svg .vector.sum")
+          .select("line")
+          .attr("x2", (mag.re / plot.range) * vecPlot.radius)
+          .attr("y2", -(mag.im / plot.range) * vecPlot.radius)
+        spins.forEach( (spin, i) => {
+          let mag = spin.evolution(time);
+          d3.select(`#plot-spin-vector-svg .vector.spin${i}`)
+            .select("line")
+            .attr("x2", (mag.re / plot.range) * vecPlot.radius)
+            .attr("y2", -(mag.im / plot.range) * vecPlot.radius);
+          d3.select(`#plot-spin-vector-svg .vector.spin${i} .pointer`)
+            .attr("transform", `rotate(${(-180.0/math.PI)*math.arg(mag)})`)
+        })
+      }
+    })
+}
+
+function appendArrowheadMarker (svg, class_name) {
+  let id = `${class_name}_arrowhead`
+  svg.append("svg:defs").append("svg:marker")
+    .attr("id", id)
+    .attr("class", `${class_name} arrowhead`)
+    .attr("refX", 11)
+    .attr("refY", 6)
+    .attr("markerWidth", 30)
+    .attr("markerHeight", 30)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M 0 0 12 6 0 12 3 6")
+  return `url(#${id})`;
+}
+
+function test (v) {
+  console.log(v);
+}
+
+function initVectorPlot () {
+
+  var canvas = d3.select("#plot-spin-vector-svg");
+  var svg = canvas.append("g").attr("class", "frame")
+  var margin = {top: 40, right: 40, bottom: 40, left: 40};
+  var width = canvas.attr("width") - margin.left - margin.right;
+  var height = canvas.attr("height") - margin.top - margin.bottom;
+  var radius = 0.5*height;
+  
+  svg.attr("transform", `translate(${margin.left+0.5*width}, ${margin.top+0.5*height})`);
+
+  svg.append("circle")
+    .attr("class", "circle")
+    .attr("r", radius)
+    .attr("fill", "none");
+      
+  svg.append("g")
+    .attr("class", "vector sum")
+    .attr("visibility", "hidden")
+    .append("line")
+    .attr("marker-end", appendArrowheadMarker(svg, "sum"));
+
+  svg.append("g")
+    .attr("class", "line_real")
+    .append("line")
+    .attr("x2", radius+25)
+    .attr("marker-end", appendArrowheadMarker(svg, "line_real"));
+
+  svg.append("g")
+    .attr("class", "line_imag")
+    .append("line")
+    .attr("y2", -radius-25)
+    .attr("marker-end", appendArrowheadMarker(svg, "line_imag"));
+
+  spins.forEach( (spin, i) => {
+    let spinG = svg.append("g")
+      .attr("class", `vector spin spin${i}`)
+      .attr("visibility", "hidden")
+    spinG.append("line")
+      .attr("marker-end", appendArrowheadMarker(svg, "spin"))
+
+    let pointerG = spinG.append("g")
+      .attr("class", "pointer")
+    pointerG.append("path")
+      .attr("d", `M ${radius} 0 ${15+radius} 10 ${15+radius} -10`)
+    pointerG.append("g")
+      .attr("class", "text")
+      .append("text")
+      .text(`${'I'.repeat(i+1)}`)
+      .style("writing-mode", "tb")
+      .attr("x", `${radius+10}`)
+      .attr("y", "4.5")
+      .attr("dominant-baseline", "center")
+      .attr("text-anchor", "middle")
+      .attr("font-size", "10")
+      .attr("fill", "white")
+      .attr("stroke", "none")
+
+  })
+
+  return {
+    svg: svg,
+    radius: radius
+  }
+}
+
+
+
+
+
+
+
+
+
 function updateTimeDomainPlot (plot) {
 
   let range = math.max([math.abs(math.re(timeDomain)), math.abs(math.im(timeDomain))])
+  plot.range = range;
   plot.yScale.domain([-range, range])
   plot.yaxis.transition()
     .duration(animationDuration)
