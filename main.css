@@ -47,6 +47,12 @@
   stroke-width:0;
 }
 
+.line_processing {
+    fill: none;
+    stroke: #00ff00;
+    stroke-width: 1;
+}
+
 body {
   display: grid;
   grid-template-columns: auto auto;
@@ -94,8 +100,14 @@ input[type='text'] {
   overflow:hidden;
 }
 
+.mouse-line {
+  stroke: black;
+  stroke-width: 1px;
+}
 
-
+.window {
+  display:none;
+}
 
 
 

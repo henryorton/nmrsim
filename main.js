@@ -1,40 +1,324 @@
 
+// Global variables
+const BYTES_PER_VALUE = 8; // 8 for 64 bit float, 4 for 32 bit float
+const MAX_BYTES = (2**16) * (BYTES_PER_VALUE) * (2); // 64k, 64 bit float, 2
+const NUMBER_SPINS = 2;
+const ANI_DUR = 200;
+const PROC_PLOT_POINTS = 200;
+
+const ArrayType = Float64Array;
+const signalDataBuffer = new ArrayBuffer(MAX_BYTES);
+const procDataBuffer = new ArrayBuffer(MAX_BYTES);
+
+
+$(document).ready( () => {
+  initAll();
+  $(document).on("keypress", e => {
+    if (e.which==13 && !$(e.target).hasClass("parameter")) {
+      update();
+    }
+  })
+});
+
+
+function initSignalArray(acquisitionPoints) {
+  let n = acquisitionPoints;
+  if (n/2 > MAX_BYTES/8) {
+    throw "Number of points too large"
+    return false;
+  }
+  sig = {
+    real: new ArrayType(signalDataBuffer, 0, n),
+    imag: new ArrayType(signalDataBuffer, MAX_BYTES/2, n),
+  };
+  sig.length = sig.real.length;
+  sig.real[0]=1.0
+};
+
+function initTimeArray(zeroFillingPoints) {
+  let n = sig.length;
+  let z = zeroFillingPoints;
+  if (n/2 > MAX_BYTES/8) {
+    throw "Number of points too large"
+    return false;
+  }
+  time = {
+    real: new ArrayType(signalDataBuffer, 0, n+z),
+    imag: new ArrayType(signalDataBuffer, MAX_BYTES/2, n+z),
+    length: n+z,
+  }
+  time.real.fill(0.0, n, n+z);
+  time.imag.fill(0.0, n, n+z);
+}
+
+function initProcessArray() {
+  let nz = time.length;
+  let procR = new ArrayType(procDataBuffer, 0, nz);
+  let procI = new ArrayType(procDataBuffer, MAX_BYTES/2, nz);
+  proc = new ComplexArray(0, ArrayType).from_ri(procR, procI);
+}
+
+function initSpins(number) {
+  let spins = []
+  for (let i=0; i<number; i++) {
+    spins[i] = new Spin(`.spin${i}`)
+  }
+  return spins
+}
+
+// Regex input filter for text
+(function($) {
+  $.fn.inputFilter = function(inputFilter) {
+    return this.on("input keydown keyup mousedown mouseup select contextmenu drop", function() {
+      if (inputFilter(this.value)) {
+        this.oldValue = this.value;
+        this.oldSelectionStart = this.selectionStart;
+        this.oldSelectionEnd = this.selectionEnd;
+      } else if (this.hasOwnProperty("oldValue")) {
+        this.value = this.oldValue;
+        this.setSelectionRange(this.oldSelectionStart, this.oldSelectionEnd);
+      } else {
+        this.value = "";
+      }
+    });
+  };
+}(jQuery));
+
+
+// Parameter class to handle input filters, ranges and types
+// Parameter type can be spin, acquisition, processing
+class Parameter {
+  constructor(input_id, parameter_type, input_type=null, factor=1.0, range=null) {
+    this.val = null;
+    this.range = range;
+    this.factor = factor;
+    this.parameter_type = parameter_type;
+    this.id = input_id;
+    this.elem = $(input_id)
+    this.elem.addClass("parameter")
+    if (input_type) {
+      switch (input_type) {
+        case "float":
+          this.regex = /^-?\d*[.]?\d*$/;
+          this.parser = parseFloat;
+          break;
+        case "ufloat":
+          this.regex = /^\d*[.]?\d*$/;
+          this.parser = parseFloat;
+          break;
+        case "int":
+          this.regex = /^-?\d*$/;
+          this.parser = parseInt;
+          break;
+        case "uint":
+          this.regex = /^\d*$/;
+          this.parser = parseInt;
+          break;
+        default:
+          throw "Regex not recognised"
+      }
+      this.elem.inputFilter( value => this.regex.test(value) )
+    }
+
+    this.store();
+
+    this.elem.on("keypress", e => {
+      if (e.which==13) {
+        if (this.store()) {
+          update(this.parameter_type);
+        }
+      }
+    });
+
+    this.elem.on("focusout", e => this.store());
+  }
+
+  store(value=this.elem.val()) {
+    let val = this.parser(value);
+    if (isNaN(val)) {
+      alert("Invalid input");
+      this.set_field();
+      return false;
+    }
+    if (this.range) {
+      if (!(val >= this.range[0] && val <= this.range[1])) {
+        alert(`Input out of range: [${this.range}]`);
+        this.set_field();
+        return false;
+      }
+    }
+    this.val = val * this.factor;
+    return true
+  }
+
+  set_field(value=this.val) {
+    this.elem.val(value / this.factor);
+  }
+
+  set_value(value) {
+    this.value = value;
+    this.set_field();
+  }
+
+}
+
 
 class Spin {
-  constructor(amplitude=1.0, offset=2*math.pi, phase=0.0, r1=1.0, r2=1.0) {
-    this.amplitude = amplitude;
-    this.offset = offset;
-    this.phase = phase;
-    this.r1 = r1;
-    this.r2 = r2;
+  constructor(spin_class, amplitude=0.0, offset=0.0, phase=0.0, r2=0.0) {
+    this.amplitude = new Parameter(`${spin_class} .amplitude`, "spin", "float");
+    this.offset = new Parameter(`${spin_class} .offset`, "spin", "float", 2*PI);
+    this.phase = new Parameter(`${spin_class} .phase`, "spin", "float", (PI/180));
+    this.t2 = new Parameter(`${spin_class} .t2`, "spin", "ufloat");
   }
-  exponent() {
-    return math.complex(-this.r2, this.offset - 2*math.PI*carrierFrequency);
-  }
+
   evolution(time) {
-    let mag = math.chain(time)
-      .multiply(this.exponent())
-      .add(math.complex(0.0, this.phase))
-      .exp()
-      .multiply(this.amplitude)
-      .done()
-    return mag
+    let pf = this.amplitude.val * Math.exp(-time / this.t2.val);
+    let real = pf * Math.cos((this.offset.val * time) + this.phase.val);
+    let imag = pf * Math.sin((this.offset.val * time) + this.phase.val);
+    return {real:real, imag:imag}
   }
 }
 
+
+function initAll() {
+  expP = {
+    noise: new Parameter("#experimentalNoise", "acquisition", "ufloat"),
+    quadrature: () => $("#quadratureDetection").is($(":checked"))
+  }
+  spins = initSpins(NUMBER_SPINS);
+  acquP = new AcquisitionParameters();
+  procP = new ProcessParameters();
+
+  tdPlot = initPlot("#plot-time-domain-svg");
+  fqPlot = initPlot("#plot-freq-domain-svg");
+  vcPlot = initVectorPlot()
+  initMouseOverEffects(tdPlot, vcPlot)
+
+  update();
+
+}
+
+
+function update(parameter_type) {
+  initSignalArray(acquP.numberPoints);
+  initTimeArray(procP.zeroFilling.val)
+  initProcessArray()
+  calculateSignal();
+  processSignal();
+  updateFreqDomainPlot(fqPlot);
+  proc.fftShift();
+  proc.InvFFT();
+  updateTimeDomainPlot(tdPlot);
+  updateProcessingPlots(tdPlot, fqPlot);
+}
+
+class ProcessParameters {
+  constructor () {
+    this.zeroFilling = new Parameter("#zeroFilling", "processing", "uint")
+    this.phcor0 = new Parameter("#phaseCorrection0", "processing", "float", PI/180)
+    this.phcor1 = new Parameter("#phaseCorrection1", "processing", "float", PI/180)
+
+    this.windows = {
+      none: {},
+      exponential: {
+        a: new Parameter("#exp_a", "processing", "ufloat")
+      },
+      gaussian: {},
+      trigonometric: {}
+    }
+
+    this.windowName = $("#windowFunction").val()
+    $("#windowFunction").on("change", e => {
+      $(`.window.${this.windowName}`).hide(1000);
+      this.windowName = e.target.value;
+      $(`.window.${this.windowName}`).show(1000);
+    })
+  }
+
+  get window () {
+    switch (this.windowName) {
+      case "none":
+        return false;
+      break;
+      case "exponential":
+        return this.exp_func();
+      break;
+    }
+  }
+
+  exp_func () {
+    let a = this.windows.exponential.a.val
+    return function (t) {
+      return Math.exp(-PI * a * t)
+    }
+  }
+
+  gauss_func () {
+    let a = this.windows.gaussian.a.val
+    return function (t) {
+      return Math.exp( -a*PI*t - b*t*t)
+    }
+  }
+
+
+
+  // EM[i] = exp( -PI*i*lb/sw )
+
+  // SP[i] = sin( PI*off + PI*(end-off)*i/(tSize-1) )^pow
+
+//           GMB[i] = exp( -PI*lb*t + (PI*lb/(2.0*gb*aq))*t*t )
+//           t  = i/sw
+//           aq = tSize/sw
+//           a  = PI*lb
+//           b  = -a/(2.0*gb*aq)
+
+
+
+// Given the GMB adjustable parameters lb and gb:
+
+//           GMB[i] = exp( -a*t - b*t*t )
+// where
+//           t  = i/sw
+//           aq = tSize/sw
+//           a  = PI*lb
+//           b  = -a/(2.0*gb*aq)
+
+}
+
 class AcquisitionParameters {
-  constructor() {
+  constructor () {
     this.lastSet = "numberPoints";
     this.lastLastSet = "acquisitionTime";
-    this.numberPoints = 128;
-    this.acquisitionTime = 1.0;
     this.variables = ["numberPoints","acquisitionTime","spectralWidth","dwellTime"];
 
+    this.pars = {
+      numberPoints: new Parameter("#numberPoints", "acquisition", "uint"),
+      acquisitionTime: new Parameter("#acquisitionTime", "acquisition", "ufloat"),
+      dwellTime: new Parameter("#dwellTime", "acquisition", "ufloat"),
+      spectralWidth: new Parameter("#spectralWidth", "acquisition", "ufloat"),
+      carrierFrequency: new Parameter("#carrierFrequency", "acquisition", "float"),
+    }
+
     this.variables.forEach( v => {
-      $(`#${v}`).on("focusout", event => {
-        this.setVariable(v, $(event.target).val())
+      this.pars[v].elem.on("keypress", e => {
+        (e.which==13) && this.setVariable(v);
+      })
+      this.pars[v].elem.on("focusout", e => {
+        this.setVariable(v);
       })
     })
+  }
+  get numberPoints () {
+    return this.pars.numberPoints.val;
+  }
+  set numberPoints (value) {
+    this.pars.numberPoints.val = value;
+  }
+  get acquisitionTime () {
+    return this.pars.acquisitionTime.val;
+  }
+  set acquisitionTime (value) {
+    this.pars.acquisitionTime.val = value;
   }
   get dwellTime () {
     return this.acquisitionTime / this.numberPoints;
@@ -42,6 +326,13 @@ class AcquisitionParameters {
   get spectralWidth () {
     return 1.0 / this.dwellTime;
   }
+  get carrierFrequency () {
+    return this.pars.carrierFrequency.val;
+  }
+  set carrierFrequency (value) {
+    this.pars.carrierFrequency.val = value;
+  }
+
   validate (variable, revert) {
     if (this.lastSet==variable) {
       if (this.lastLastSet==variable) {
@@ -58,24 +349,24 @@ class AcquisitionParameters {
     })
   }
   populate () {
-    $("#numberPoints").val(this.numberPoints);
-    $("#acquisitionTime").val(this.acquisitionTime);
-    $("#spectralWidth").val(this.spectralWidth);
-    $("#dwellTime").val(this.dwellTime); 
+    this.pars.numberPoints.set_field();
+    this.pars.acquisitionTime.set_field();
+    this.pars.dwellTime.set_field(this.dwellTime);
+    this.pars.spectralWidth.set_field(this.spectralWidth)
   }
-  setVariable (variable, value) {
+  setVariable (variable) {
     switch (variable) {
       case "numberPoints":
-      this.setNumberPoints(value);
+      this.setNumberPoints(this.pars.numberPoints.val);
       break;
       case "acquisitionTime":
-      this.setAcquisitionTime(value);
-      break;
-      case "spectralWidth":
-      this.setSpectralWidth(value);
+      this.setAcquisitionTime(this.pars.acquisitionTime.val);
       break;
       case "dwellTime":
-      this.setDwellTime(value);
+      this.setDwellTime(this.pars.dwellTime.val);
+      break;
+      case "spectralWidth":
+      this.setSpectralWidth(this.pars.spectralWidth.val);
       break;
     }
   }
@@ -121,100 +412,82 @@ class AcquisitionParameters {
   }
 }
 
-var spins = new Array(2).fill().map(() => new Spin())
-var aPars = new AcquisitionParameters();
-var numberPoints;
-var acquisitionTime;
-var spectralWidth;
-var carrierFrequency;
-var experimentalNoise;
-var quadratureDetection;
 
-var zeroFilling;
 
-var timeAxis;
-var freqAxis;
-var timeDomain;
-var freqDomain;
-var fftdata;
 
-function updateNumberPoint () {
-  parseFloat($("#numberPoints").val());
-}
+function calculateSignal () {
+  if (expP.noise.val) {
+    let scale = expP.noise.val;
+    for (let i=0; i<sig.length; i++) {
+      sig.real[i] = scale*(Math.random()-0.5);
+      sig.imag[i] = scale*(Math.random()-0.5);
+    }
+  }
+  else {
+    sig.real.fill(0);
+    sig.imag.fill(0);
+  }
 
-function populateVariables () {
-  zeroFilling = parseInt($("#zeroFilling").val());
-  numberPoints = parseInt($("#numberPoints").val());
-  acquisitionTime = parseFloat($("#acquisitionTime").val());
-  spectralWidth = parseFloat($("#spectralWidth").val());
-  carrierFrequency = parseFloat($("#carrierFrequency").val());
-  experimentalNoise = parseFloat($("#experimentalNoise").val());
-  quadratureDetection = $("#quadratureDetection").is($(":checked"));
-
-  spins.forEach( (spin, i) => {
-    spin.amplitude = parseFloat($(`.spins .spin${i} .amplitude`).val())
-    spin.offset = 2.0 * math.PI * parseFloat($(`.spins .spin${i} .offset`).val())
-    spin.r2 = 1.0 / parseFloat($(`.spins .spin${i} .t2`).val())
-    spin.phase = (math.PI / 180.0) * parseFloat($(`.spins .spin${i} .phase`).val())
+  spins.forEach( spin => {
+    let amp = spin.amplitude.val;
+    let offs = spin.offset.val - acquP.carrierFrequency*2*PI;
+    let ph = spin.phase.val;
+    let t2 = spin.t2.val;
+    let dt = acquP.dwellTime;
+    for (let i=0; i<sig.length; i++) {
+      let pf = amp * Math.exp(-(i*dt)/t2)
+      let arg = (offs * i * dt) + ph
+      sig.real[i] += pf * Math.cos(arg)
+      sig.imag[i] += pf * Math.sin(arg)
+    }
   })
 }
 
-function initAxes () {
-  timeAxis = new Array(numberPoints);
-  freqAxis = new Array(numberPoints);
-  for (let i=0; i<numberPoints; i++) {
-    timeAxis[i] = acquisitionTime * (i / numberPoints)
-    freqAxis[i] = (0.5 - (i / numberPoints)) * spectralWidth + carrierFrequency
-  }
-  noiseAxis = math.multiply(math.complex(0.5,0.5), 
-    math.random([numberPoints], -experimentalNoise, experimentalNoise)
-  )
-
-    
-}
-
-function calculateSignal () {
-  timeDomain = new Array(numberPoints).fill(math.complex(0.0));
-  spins.forEach(
-    spin => {
-      timeDomain = math.chain(timeAxis)
-        .multiply(spin.exponent())
-        .add(math.complex(0.0, spin.phase))
-        .exp()
-        .multiply(spin.amplitude)
-        .add(timeDomain)
-        .add(noiseAxis)
-        .done()
-    }
-  )
-  if (!quadratureDetection) {
-    timeDomain.forEach( (elem, i) => {
-      timeDomain[i].im = 0;
-    })
-  }
-}
-
 function processSignal () {
-  fftdata = new ComplexArray(numberPoints)
-  fftdata.real = math.re(timeDomain);
-  fftdata.imag = math.im(timeDomain);
-  fftdata.FFT();
-  fftdata.fftShift();
-  freqDomain = new Array(numberPoints)
-  fftdata.forEach(
-    (value, i, n) => freqDomain[i] = math.complex(value.real, value.imag)
-  )
+  proc.real.set(time.real);
+  if (expP.quadrature()) {
+    proc.imag.set(time.imag);
+  }
+  else {
+    proc.imag.fill(0.0);
+  }
+
+  let wfunc = procP.window
+  if (wfunc) {
+    let dt = acquP.dwellTime
+    let func = procP.window;
+    for (let i=0; i<sig.length; i++) {
+      let a = wfunc(i * dt);
+      proc.real[i] *= a;
+      proc.imag[i] *= a;
+    }
+  }
+
+  proc.FFT();
+  proc.fftShift();
+
+  let ph0 = procP.phcor0.val;
+  let ph1 = procP.phcor1.val;
+  let shift = 0.5 * (proc.length % 2);
+
+  for (let i=0; i<proc.length; i++) {
+    let f = (0.5 - (i + shift)/proc.length);
+    let theta = -(ph0 + f * ph1)
+    let re = proc.real[i];
+    let im = proc.imag[i];
+    let cos = Math.cos(theta);
+    let sin = Math.sin(theta);
+    proc.real[i] = cos * re + sin * im;
+    proc.imag[i] = cos * im - sin * re;
+  }
 }
 
-var animationDuration = 200;
-var tdPlot = initPlot("#plot-time-domain-svg");
-var fqPlot = initPlot("#plot-freq-domain-svg");
-var vecPlot = initVectorPlot();
-initMouseOverEffects(tdPlot);
 
 
 
-function initPlot (canvas_id, axis) {
+
+
+function initPlot (canvas_id) {
 
   var canvas = d3.select(canvas_id);
   var svg = canvas.append("g").attr("class", "frame")
@@ -238,10 +511,13 @@ function initPlot (canvas_id, axis) {
     .attr("class", "y_axis")
 
   svg.append("path")
-    .attr("class", "line_real")
+    .attr("class", "line_processing")
 
   svg.append("path")
     .attr("class", "line_imag")
+
+  svg.append("path")
+    .attr("class", "line_real")
 
   var plotData = {
     canvas : canvas,
@@ -253,6 +529,7 @@ function initPlot (canvas_id, axis) {
     yScale: yScale,
     real: svg.select(".line_real"),
     imag: svg.select(".line_imag"),
+    proc: svg.select(".line_processing"),
     xaxis: svg.select(".x_axis"),
     yaxis: svg.select(".y_axis"),
     range: null
@@ -263,85 +540,137 @@ function initPlot (canvas_id, axis) {
 
 
 
+function updateProcessingPlots (tdPlot, fqPlot) {
 
+  let wfunc = procP.window;
+  if (wfunc) {
+    var wfdata = new Float64Array(PROC_PLOT_POINTS);
+    let taq = acquP.dwellTime * proc.length;
+    for (let i=0; i<PROC_PLOT_POINTS; i++) {
+      let t = (i/PROC_PLOT_POINTS) * taq
+      wfdata[i] = wfunc(t);
+    }
+  } else {
+    var wfdata = [0];
+  }
 
-function initMouseOverEffects (plot) {
-  var mouseG = plot.svg.append("g")
-      .attr("class", "mouse-over-effects");
+  let fac = (acquP.dwellTime * proc.length) / wfdata.length;
+  var range = tdPlot.range;
+  let wline = d3.line()
+    .x( (d, i) => tdPlot.xScale(fac * i) )
+    .y(  d     => tdPlot.yScale(d * range) )
 
-  mouseG.append("path") // this is the black vertical line to follow mouse
-    .attr("class", "mouse-line")
-    .style("stroke", "black")
-    .style("stroke-width", "1px")
-    .attr("visibility", "hidden")
+  tdPlot.proc.datum(wfdata)
+    .transition()
+    .duration(ANI_DUR)
+    .attr("d", wline)
 
-  mouseG.append('svg:rect') // append a rect to catch mouse movements on canvas
-    .attr('width', plot.width) // can't catch mouse events on a g element
-    .attr('height', plot.height)
-    .attr('fill', 'none')
-    .attr('pointer-events', 'all')
-    .on('mouseout', () => { // on mouse out hide line, circles and text
-      d3.select(".mouse-line")
-        .attr("visibility", "hidden");
-      d3.selectAll("#plot-spin-vector-svg .vector")
-        .attr("visibility", "hidden");
-    })
-    .on('mouseover', () => { // on mouse in show line, circles and text
-      d3.select(".mouse-line")
-        .attr("visibility", "visible");
-      d3.selectAll("#plot-spin-vector-svg .vector.sum")
-        .attr("visibility", "visible");
-      spins.forEach( (spin, i) => {
-        if (spin.amplitude) {
-          d3.select(`#plot-spin-vector-svg .vector.spin${i}`)
-            .attr("visibility", "visible")
-        }
-      })
-    })
-    .on('mousemove', () => { // mouse moving over canvas
-      let mouse = d3.mouse(d3.event.currentTarget);
-      let point = Math.round( (mouse[0]/plot.width) * numberPoints)
-      let time = timeAxis[point];
-      let loc = plot.xScale(time);
-      let mag = timeDomain[point];
-      if ( typeof loc == 'number') {
-        d3.select(".mouse-line")
-          .attr("d", () => `M${loc},${plot.height} ${loc},0`);
-        d3.select("#plot-spin-vector-svg .vector.sum")
-          .select("line")
-          .attr("x2", (mag.re / plot.range) * vecPlot.radius)
-          .attr("y2", -(mag.im / plot.range) * vecPlot.radius)
-        spins.forEach( (spin, i) => {
-          let mag = spin.evolution(time);
-          d3.select(`#plot-spin-vector-svg .vector.spin${i}`)
-            .select("line")
-            .attr("x2", (mag.re / plot.range) * vecPlot.radius)
-            .attr("y2", -(mag.im / plot.range) * vecPlot.radius);
-          d3.select(`#plot-spin-vector-svg .vector.spin${i} .pointer`)
-            .attr("transform", `rotate(${(-180.0/math.PI)*math.arg(mag)})`)
-        })
-      }
-    })
+  let ph0 = procP.phcor0.val;
+  let ph1 = procP.phcor1.val;
+  let pi2 = 2*PI
+  if (ph0 || ph1) {
+    var phdata = new Float64Array(PROC_PLOT_POINTS);
+    let sw = acquP.spectralWidth;
+    for (let i=0; i<PROC_PLOT_POINTS; i++) {
+      let f = 0.5 - i/PROC_PLOT_POINTS;
+      phdata[i] = (((((ph0 + f * ph1) / PI) - 1) % 2) + 2) % 2 - 1;
+    }
+  }
+  else {
+    var phdata = [0];
+  }
+  
+  let sw = acquP.spectralWidth;
+  var range = fqPlot.range;
+  let pline = d3.line()
+    .x( (d, i) => fqPlot.xScale((0.5 - i/phdata.length)*sw) )
+    .y(  d     => fqPlot.yScale(d * range) )
+
+  fqPlot.proc.datum(phdata)
+    .transition()
+    .duration(ANI_DUR)
+    .attr("d", pline)
+
 }
 
-function appendArrowheadMarker (svg, class_name) {
-  let id = `${class_name}_arrowhead`
-  svg.append("svg:defs").append("svg:marker")
-    .attr("id", id)
-    .attr("class", `${class_name} arrowhead`)
-    .attr("refX", 11)
-    .attr("refY", 6)
-    .attr("markerWidth", 30)
-    .attr("markerHeight", 30)
-    .attr("orient", "auto")
-    .append("path")
-    .attr("d", "M 0 0 12 6 0 12 3 6")
-  return `url(#${id})`;
+
+function updateTimeDomainPlot (plot) {
+
+  let maximini = [
+    Math.min.apply(null, proc.real),
+    Math.max.apply(null, proc.real),
+    Math.min.apply(null, proc.imag),
+    Math.max.apply(null, proc.imag),
+  ];
+  let range = Math.max(...maximini.map( v => Math.abs(v)));
+  plot.range = range;
+  plot.yScale.domain([-range, range])
+
+  plot.yaxis.transition()
+    .duration(ANI_DUR)
+    .call(d3.axisLeft(plot.yScale))
+
+  plot.xScale.domain([0, acquP.dwellTime * proc.length])
+  plot.xaxis.transition()
+    .duration(ANI_DUR)
+    .call(d3.axisBottom(plot.xScale))
+
+  const dt = acquP.dwellTime
+  let line = d3.line()
+    .x( (d, i) => plot.xScale(i*dt) )
+    .y(  d     => plot.yScale(d) );
+
+  plot.real.datum(proc.real)
+    .transition()
+    .duration(ANI_DUR)
+    .attr("d", line)
+
+  plot.imag.datum(proc.imag)
+    .transition()
+    .duration(ANI_DUR)
+    .attr("d", line)
+
 }
 
-function test (v) {
-  console.log(v);
+function updateFreqDomainPlot (plot) {
+
+  let maximini = [
+    Math.min.apply(null, proc.real),
+    Math.max.apply(null, proc.real),
+    Math.min.apply(null, proc.imag),
+    Math.max.apply(null, proc.imag),
+  ];
+  let range = Math.max(...maximini.map( v => Math.abs(v)))
+  plot.range = range;
+  plot.yScale.domain([-range, range])
+  plot.yaxis.transition()
+    .duration(ANI_DUR)
+    .call(d3.axisLeft(plot.yScale))
+
+  plot.xScale.domain([0.5*acquP.spectralWidth + acquP.carrierFrequency,
+                     -0.5*acquP.spectralWidth + acquP.carrierFrequency])
+  plot.xaxis.transition()
+    .duration(ANI_DUR)
+    .call(d3.axisBottom(plot.xScale))
+
+  let shift = 0.5 * (proc.length % 2);
+  let line = d3.line()
+    .x( (d, i) => plot.xScale(
+      (0.5 - (i + shift)/proc.length) * acquP.spectralWidth + acquP.carrierFrequency))
+    .y(  d     => plot.yScale(d) );
+
+  plot.real.datum(proc.real)
+    .transition()
+    .duration(ANI_DUR)
+    .attr("d", line)
+
+  plot.imag.datum(proc.imag)
+    .transition()
+    .duration(ANI_DUR)
+    .attr("d", line)
+
 }
+
 
 function initVectorPlot () {
 
@@ -358,12 +687,6 @@ function initVectorPlot () {
     .attr("class", "circle")
     .attr("r", radius)
     .attr("fill", "none");
-      
-  svg.append("g")
-    .attr("class", "vector sum")
-    .attr("visibility", "hidden")
-    .append("line")
-    .attr("marker-end", appendArrowheadMarker(svg, "sum"));
 
   svg.append("g")
     .attr("class", "line_real")
@@ -379,13 +702,13 @@ function initVectorPlot () {
 
   spins.forEach( (spin, i) => {
     let spinG = svg.append("g")
-      .attr("class", `vector spin spin${i}`)
+      .attr("class", `td-mouse-over vector spin spin${i}`)
       .attr("visibility", "hidden")
     spinG.append("line")
       .attr("marker-end", appendArrowheadMarker(svg, "spin"))
 
     let pointerG = spinG.append("g")
-      .attr("class", "pointer")
+      .attr("class", `pointer`)
     pointerG.append("path")
       .attr("d", `M ${radius} 0 ${15+radius} 10 ${15+radius} -10`)
     pointerG.append("g")
@@ -403,143 +726,224 @@ function initVectorPlot () {
 
   })
 
+  svg.append("g")
+    .attr("class", "td-mouse-over vector sum")
+    .attr("visibility", "hidden")
+    .append("line")
+    .attr("marker-end", appendArrowheadMarker(svg, "sum"));
+
   return {
     svg: svg,
     radius: radius
   }
 }
 
-
-
-
-
-
-
-
-
-function updateTimeDomainPlot (plot) {
-
-  let range = math.max([math.abs(math.re(timeDomain)), math.abs(math.im(timeDomain))])
-  plot.range = range;
-  plot.yScale.domain([-range, range])
-  plot.yaxis.transition()
-    .duration(animationDuration)
-    .call(d3.axisLeft(plot.yScale))
-
-  plot.xScale.domain([0, acquisitionTime])
-  plot.xaxis.transition()
-    .duration(animationDuration)
-    .call(d3.axisBottom(plot.xScale))
-
-  let line = d3.line()
-    .x( (d, i) => plot.xScale(timeAxis[i]) )
-    .y(  d     => plot.yScale(d) );
-
-  plot.real.datum(math.re(timeDomain))
-    .transition()
-    .duration(animationDuration)
-    .attr("d", line)
-
-  plot.imag.datum(math.im(timeDomain))
-    .transition()
-    .duration(animationDuration)
-    .attr("d", line)
-
+function appendArrowheadMarker (svg, class_name) {
+  let id = `${class_name}_arrowhead`
+  svg.append("svg:defs").append("svg:marker")
+    .attr("id", id)
+    .attr("class", `${class_name} arrowhead`)
+    .attr("refX", 11)
+    .attr("refY", 6)
+    .attr("markerWidth", 30)
+    .attr("markerHeight", 30)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M 0 0 12 6 0 12 3 6")
+  return `url(#${id})`;
 }
 
 
-function updateFreqDomainPlot (plot) {
-
-  plot.yScale.domain(d3.extent(math.re(freqDomain).concat(math.im(freqDomain))))
-  plot.yaxis.transition()
-    .duration(animationDuration)
-    .call(d3.axisLeft(plot.yScale))
-
-  plot.xScale.domain([0.5*spectralWidth + carrierFrequency, -0.5*spectralWidth + carrierFrequency])
-  plot.xaxis.transition()
-    .duration(animationDuration)
-    .call(d3.axisBottom(plot.xScale))
-
-  let line = d3.line()
-    .x( (d, i) => plot.xScale(freqAxis[i]) )
-    .y(  d     => plot.yScale(d) );
-
-  plot.real.datum(math.re(freqDomain))
-    .transition()
-    .duration(animationDuration)
-    .attr("d", line)
-
-  plot.imag.datum(math.im(freqDomain))
-    .transition()
-    .duration(animationDuration)
-    .attr("d", line)
-
-}
-
-function update () {
-  aPars.storeCurrent();
-  populateVariables();
-  initAxes();
-  calculateSignal();
-  processSignal();
-  updateTimeDomainPlot(tdPlot);
-  updateFreqDomainPlot(fqPlot);
-}
 
 
-(function($) {
-  $.fn.inputFilter = function(inputFilter) {
-    return this.on("input keydown keyup mousedown mouseup select contextmenu drop", function() {
-      if (inputFilter(this.value)) {
-        this.oldValue = this.value;
-        this.oldSelectionStart = this.selectionStart;
-        this.oldSelectionEnd = this.selectionEnd;
-      } else if (this.hasOwnProperty("oldValue")) {
-        this.value = this.oldValue;
-        this.setSelectionRange(this.oldSelectionStart, this.oldSelectionEnd);
-      } else {
-        this.value = "";
+function initMouseOverEffects (tdPlot, vcPlot) {
+  var mouseG = tdPlot.svg.append("g")
+    .attr("class", "td-mouse-over-effects");
+
+  mouseG.append("path")
+    .attr("class", "td-mouse-over mouse-line")
+    .attr("visibility", "hidden")
+
+  mouseG.append('svg:rect') // append a rect to catch mouse movements on canvas
+    .attr('width', tdPlot.width) // can't catch mouse events on a g element
+    .attr('height', tdPlot.height)
+    .attr('fill', 'none')
+    .attr('pointer-events', 'all')
+    .on('mouseout', () => {
+      d3.selectAll(".td-mouse-over")
+        .attr("visibility", "hidden");
+    })
+    .on('mouseover', () => {
+      d3.selectAll(".td-mouse-over")
+        .attr("visibility", "visible");
+      spins.forEach( (spin, i) => {
+        if (!spin.amplitude.val) {
+          d3.selectAll(`#plot-spin-vector-svg .spin${i}`)
+            .attr("visibility", "hidden")
+        }
+      })
+    })
+    .on('mousemove', () => {
+      let mouse = d3.mouse(d3.event.currentTarget);
+      let p = Math.abs(Math.round( tdPlot.xScale.invert(mouse[0]) / acquP.dwellTime))
+      let t = p * acquP.dwellTime;
+      let loc = tdPlot.xScale(t);
+      if (p < proc.length) {
+        d3.select(".mouse-line")
+          .attr("d", () => `M${loc},${tdPlot.height} ${loc},0`);
+        d3.select("#plot-spin-vector-svg .vector.sum")
+          .select("line")
+          .attr("x2", (proc.real[p] / tdPlot.range) * vcPlot.radius)
+          .attr("y2", -(proc.imag[p] / tdPlot.range) * vcPlot.radius)
+        spins.forEach( (spin, i) => {
+          let mag = spin.evolution(t);
+          let theta = Math.atan2(mag.real, mag.imag) - PI/2
+          d3.select(`#plot-spin-vector-svg .vector.spin${i}`)
+            .select("line")
+            .attr("x2", (mag.real / tdPlot.range) * vcPlot.radius)
+            .attr("y2", -(mag.imag / tdPlot.range) * vcPlot.radius);
+          d3.select(`#plot-spin-vector-svg .vector.spin${i} .pointer`)
+            .attr("transform", `rotate(${(180.0/PI)*theta})`)
+        })
       }
-    });
-  };
-}(jQuery));
-
-
-function initInputFilters () {
-  $("#numberPoints").inputFilter( value => /^\d*$/.test(value) );
-  $("#acquisitionTime").inputFilter( value => /^\d*[.]?\d*$/.test(value) );
-  $("#spectralWidth").inputFilter( value => /^\d*[.]?\d*$/.test(value) );
-  $("#dwellTime").inputFilter( value => /^\d*[.]?\d*$/.test(value) );
-  $("#carrierFrequency").inputFilter( value => /^-?\d*[.]?\d*$/.test(value) );
-
-  $(".spins .amplitude").each( (i, elem) => {
-    $(elem).inputFilter( value => /^\d*[.]?\d*$/.test(value) )
-  })
-  $(".spins .offset").each( (i, elem) => {
-    $(elem).inputFilter( value => /^-?\d*[.]?\d*$/.test(value) )
-  })
-  $(".spins .t2").each( (i, elem) => {
-    $(elem).inputFilter( value => /^\d*[.]?\d*$/.test(value) )
-  })
-  $(".spins .phase").each( (i, elem) => {
-    $(elem).inputFilter( value => /^-?\d*[.]?\d*$/.test(value) )
-  })
+    })
 }
 
 
-$(document).ready( () => {
-  $(document).on('keypress',function(e) {
-    if(e.which == 13) {
-      update();
-    }
-  });
 
-  initInputFilters();
-  update();
+
+
+
+
+
+
+
+// function updateTimeDomainPlot (plot) {
+
+//   let range = math.max([math.abs(math.re(timeDomain)), math.abs(math.im(timeDomain))])
+//   plot.range = range;
+//   plot.yScale.domain([-range, range])
+//   plot.yaxis.transition()
+//     .duration(animationDuration)
+//     .call(d3.axisLeft(plot.yScale))
+
+//   plot.xScale.domain([0, acquisitionTime])
+//   plot.xaxis.transition()
+//     .duration(animationDuration)
+//     .call(d3.axisBottom(plot.xScale))
+
+//   let line = d3.line()
+//     .x( (d, i) => plot.xScale(timeAxis[i]) )
+//     .y(  d     => plot.yScale(d) );
+
+//   plot.real.datum(math.re(timeDomain))
+//     .transition()
+//     .duration(animationDuration)
+//     .attr("d", line)
+
+//   plot.imag.datum(math.im(timeDomain))
+//     .transition()
+//     .duration(animationDuration)
+//     .attr("d", line)
+
+// }
+
+
+// function updateFreqDomainPlot (plot) {
+
+//   plot.yScale.domain(d3.extent(math.re(freqDomain).concat(math.im(freqDomain))))
+//   plot.yaxis.transition()
+//     .duration(animationDuration)
+//     .call(d3.axisLeft(plot.yScale))
+
+//   plot.xScale.domain([0.5*spectralWidth + carrierFrequency, -0.5*spectralWidth + carrierFrequency])
+//   plot.xaxis.transition()
+//     .duration(animationDuration)
+//     .call(d3.axisBottom(plot.xScale))
+
+//   let line = d3.line()
+//     .x( (d, i) => plot.xScale(freqAxis[i]) )
+//     .y(  d     => plot.yScale(d) );
+
+//   plot.real.datum(math.re(freqDomain))
+//     .transition()
+//     .duration(animationDuration)
+//     .attr("d", line)
+
+//   plot.imag.datum(math.im(freqDomain))
+//     .transition()
+//     .duration(animationDuration)
+//     .attr("d", line)
+
+// }
+
+// function update () {
+//   t0 = performance.now()
+//   aPars.storeCurrent();
+//   populateVariables();
+//   initAxes();
+//   calculateSignal();
+//   processSignal();
+//   updateTimeDomainPlot(tdPlot);
+//   updateFreqDomainPlot(fqPlot);
+//   t1 = performance.now()
+//   console.log(t1-t0)
+// }
+
+
+// (function($) {
+//   $.fn.inputFilter = function(inputFilter) {
+//     return this.on("input keydown keyup mousedown mouseup select contextmenu drop", function() {
+//       if (inputFilter(this.value)) {
+//         this.oldValue = this.value;
+//         this.oldSelectionStart = this.selectionStart;
+//         this.oldSelectionEnd = this.selectionEnd;
+//       } else if (this.hasOwnProperty("oldValue")) {
+//         this.value = this.oldValue;
+//         this.setSelectionRange(this.oldSelectionStart, this.oldSelectionEnd);
+//       } else {
+//         this.value = "";
+//       }
+//     });
+//   };
+// }(jQuery));
+
+
+// function initInputFilters () {
+//   $("#numberPoints").inputFilter( value => /^\d*$/.test(value) );
+//   $("#acquisitionTime").inputFilter( value => /^\d*[.]?\d*$/.test(value) );
+//   $("#spectralWidth").inputFilter( value => /^\d*[.]?\d*$/.test(value) );
+//   $("#dwellTime").inputFilter( value => /^\d*[.]?\d*$/.test(value) );
+//   $("#carrierFrequency").inputFilter( value => /^-?\d*[.]?\d*$/.test(value) );
+
+//   $(".spins .amplitude").each( (i, elem) => {
+//     $(elem).inputFilter( value => /^\d*[.]?\d*$/.test(value) )
+//   })
+//   $(".spins .offset").each( (i, elem) => {
+//     $(elem).inputFilter( value => /^-?\d*[.]?\d*$/.test(value) )
+//   })
+//   $(".spins .t2").each( (i, elem) => {
+//     $(elem).inputFilter( value => /^\d*[.]?\d*$/.test(value) )
+//   })
+//   $(".spins .phase").each( (i, elem) => {
+//     $(elem).inputFilter( value => /^-?\d*[.]?\d*$/.test(value) )
+//   })
+// }
+
+
+// $(document).ready( () => {
+//   $(document).on('keypress',function(e) {
+//     if(e.which == 13) {
+//       update();
+//     }
+//   });
+
+//   initInputFilters();
+//   update();
 
  
 
-});
+// });
 
 
 

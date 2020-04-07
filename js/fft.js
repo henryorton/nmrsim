@@ -4,20 +4,19 @@ const PI = Math.PI;
 const SQRT1_2 = Math.SQRT1_2;
 
 class ComplexArray {
-  constructor(other, arrayType = Float32Array) {
-    if (other instanceof ComplexArray) {
-      // Copy constuctor.
-      this.ArrayType = other.ArrayType;
-      this.real = new this.ArrayType(other.real);
-      this.imag = new this.ArrayType(other.imag);
-    } else {
-      this.ArrayType = arrayType;
-      // other can be either an array or a number.
-      this.real = new this.ArrayType(other);
-      this.imag = new this.ArrayType(this.real.length);
-    }
-
+  constructor(number, arrayType=Float32Array) {
+    this.ArrayType = arrayType;
+    this.real = new this.ArrayType(number);
+    this.imag = new this.ArrayType(this.real.length);
     this.length = this.real.length;
+    this.shifted = false;
+  }
+
+  from_ri(real, imag) {
+    this.real = real;
+    this.imag = imag;
+    this.length = real.length;
+    return this;
   }
 
   toString() {
@@ -57,21 +56,6 @@ class ComplexArray {
     return this;
   }
 
-  conjugate() {
-    return new ComplexArray(this).map((value) => {
-      value.imag *= -1;
-    });
-  }
-
-  magnitude() {
-    const mags = new this.ArrayType(this.length);
-
-    this.forEach((value, i) => {
-      mags[i] = Math.sqrt(value.real*value.real + value.imag*value.imag);
-    })
-
-    return mags;
-  }
   FFT() {
     return this.fft(this, false);
   }
@@ -228,11 +212,29 @@ class ComplexArray {
     return n;
   }
 
+  get realShift () {
+    return 
+  }
+
   fftShift() {
-    let shift = (this.real.length + 1) / 2;
-    shift -= this.real.length * Math.floor(shift / this.real.length);
-    this.real.push.apply(this.real, this.real.splice(0, shift));
-    this.imag.push.apply(this.imag, this.imag.splice(0, shift));
+    let shiftFrom = Math.floor((this.length+1) / 2);
+    let shiftTo = Math.floor(this.length/ 2)
+    if (this.shifted && this.length%2) {
+      shiftFrom -= 1;
+      shiftTo += 1;
+    }
+    let tmp = this.real.slice(0, shiftFrom);
+    this.real.copyWithin(0, shiftFrom, this.length);
+    this.real.set(tmp, shiftTo);
+
+    tmp = this.imag.slice(0, shiftFrom);
+    this.imag.copyWithin(0, shiftFrom, this.length);
+    this.imag.set(tmp, shiftTo);
+
+    this.shifted = !this.shifted;
+
+    // this.real.push.apply(this.real, this.real.splice(0, shift));
+    // this.imag.push.apply(this.imag, this.imag.splice(0, shift));
   }
 
 }

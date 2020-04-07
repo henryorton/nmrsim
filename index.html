@@ -26,16 +26,16 @@
           <legend>Spin I:</legend>
 
           <label>I</label>
-          <input type="text" class="param amplitude" value="1.0"><br>
+          <input type="text" class="param amplitude" value="1"><br>
 
           <label>&Omega; (Hz)</label>
-          <input type="text" class="param offset" value="2.0"><br>
+          <input type="text" class="param offset" value="0"><br>
 
           <label>&Phi; (&#176;)</label>
-          <input type="text" class="param phase" value="0.0"><br>
+          <input type="text" class="param phase" value="0"><br>
 
           <label>T2 (s)</label>
-          <input type="text" class="param t2" value="1.0"><br>
+          <input type="text" class="param t2" value="0.5"><br>
         </fieldset>
 
         <fieldset class="spin spin1">
@@ -45,13 +45,13 @@
           <input type="text" class="param amplitude" value="0.0"><br>
 
           <label>&Omega; (Hz)</label>
-          <input type="text" class="param offset" value="2.0"><br>
+          <input type="text" class="param offset" value="-2"><br>
 
           <label>&Phi; (&#176;)</label>
-          <input type="text" class="param phase" value="0.0"><br>
+          <input type="text" class="param phase" value="0"><br>
 
           <label>T2 (s)</label>
-          <input type="text" class="param t2" value="1.0"><br>
+          <input type="text" class="param t2" value="1"><br>
         </fieldset>
       </div>
       <div class="plot-spin-vector">
@@ -64,7 +64,7 @@
 
       <input type="radio" id="numberPointsCheck" name="checkVar">
       <label for="numberPoints">Number points:</label>
-      <input id="numberPoints" type="text" value="128"><br>
+      <input id="numberPoints" type="text" value="256"><br>
 
       <input type="radio" id="acquisitionTimeCheck" name="checkVar">
       <label for="acquisitionTime">Acquisition time (s):</label>
@@ -72,7 +72,7 @@
 
       <input type="radio" id="spectralWidthCheck" name="checkVar">
       <label for="spectralWidth">Spectral width (Hz):</label>
-      <input type="text" id="spectralWidth" value="128"><br>
+      <input type="text" id="spectralWidth" value="256"><br>
 
       <input type="radio" id="dwellTimeCheck" name="checkVar">
       <label for="dwellTime">Dwell time (s):</label>
@@ -89,7 +89,7 @@
 
       <input type="radio" id="zeroFillingCheck" name="checkVar">
       <label for="zeroFilling">Zero filling:</label>
-      <input id="zeroFilling" type="text" value="128"><br>
+      <input id="zeroFilling" type="text" value="256"><br>
 
       <input type="radio" id="phaseCorrection0Check" name="checkVar">
       <label for="phaseCorrection0">Phase corr. 0th (&#176;):</label>
@@ -105,7 +105,20 @@
         <option value="exponential">Exponential</option>
         <option value="gaussian">Gaussian</option>
         <option value="trigonometric">Trigonometric</option>
-      </select>
+      </select><br>
+
+      <div class="window none">
+      </div>
+
+      <div class="window exponential">
+        <img src="static/exp.svg"><br>
+
+        <input type="radio" id="exp_aCheck" name="checkVar">
+        <label for="exp_a">a:</label>
+        <input id="exp_a" type="text" value="1"><br>
+
+      </div>
+
 
     </fieldset>
 
@@ -117,7 +130,7 @@
   <div class="plots">
     <fieldset class="plot-time-domain">
       <legend>Time domain</legend>
-          <svg id="plot-time-domain-svg" width="600" height="300"></svg>
+      <svg id="plot-time-domain-svg" width="600" height="300"></svg>
     </fieldset>
 
     <fieldset class="plot-freq-domain">
@@ -126,6 +139,8 @@
     </fieldset>
 
   </div>
+
+  <input type="range" min="1" max="100" value="50" id="slider">
 
 
   </body>
