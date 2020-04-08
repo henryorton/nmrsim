@@ -1,12 +1,12 @@
 
 // Global variables
-const BYTES_PER_VALUE = 8; // 8 for 64 bit float, 4 for 32 bit float
+const ArrayType = Float64Array;
+const BYTES_PER_VALUE = ArrayType.BYTES_PER_ELEMENT; // 8 for 64 bit float, 4 for 32 bit float
 const MAX_BYTES = (2**16) * (BYTES_PER_VALUE) * (2); // 64k, 64 bit float, 2
 const NUMBER_SPINS = 2;
 const ANI_DUR = 200;
 const PROC_PLOT_POINTS = 200;
 
-const ArrayType = Float64Array;
 const signalDataBuffer = new ArrayBuffer(MAX_BYTES);
 const procDataBuffer = new ArrayBuffer(MAX_BYTES);
 
@@ -23,7 +23,7 @@ $(document).ready( () => {
 
 function initSignalArray(acquisitionPoints) {
   let n = acquisitionPoints;
-  if (n/2 > MAX_BYTES/8) {
+  if (n/2 > MAX_BYTES/BYTES_PER_VALUE) {
     throw "Number of points too large"
     return false;
   }
@@ -38,7 +38,7 @@ function initSignalArray(acquisitionPoints) {
 function initTimeArray(zeroFillingPoints) {
   let n = sig.length;
   let z = zeroFillingPoints;
-  if (n/2 > MAX_BYTES/8) {
+  if (n/2 > MAX_BYTES/BYTES_PER_VALUE) {
     throw "Number of points too large"
     return false;
   }
@@ -181,11 +181,8 @@ class Spin {
 
 
 function initAll() {
-  expP = {
-    noise: new Parameter("#experimentalNoise", "acquisition", "ufloat"),
-    quadrature: () => $("#quadratureDetection").is($(":checked"))
-  }
   spins = initSpins(NUMBER_SPINS);
+  noise = new Parameter("#experimentalNoise", "acquisition", "ufloat")
   acquP = new AcquisitionParameters();
   procP = new ProcessParameters();
 
@@ -300,8 +297,15 @@ class AcquisitionParameters {
     }
 
     this.variables.forEach( v => {
-      this.pars[v].elem.on("keypress", e => {
-        (e.which==13) && this.setVariable(v);
+      let par = this.pars[v]
+      par.elem.off("keypress");
+      par.elem.on("keypress", e => {
+        if (e.which==13) {
+          if (par.store()) {
+            this.setVariable(v);
+            update(par.parameter_type);
+          }
+        };
       })
       this.pars[v].elem.on("focusout", e => {
         this.setVariable(v);
@@ -331,6 +335,10 @@ class AcquisitionParameters {
   }
   set carrierFrequency (value) {
     this.pars.carrierFrequency.val = value;
+  }
+
+  quadrature () {
+    return $("#quadratureDetection").is($(":checked"));
   }
 
   validate (variable, revert) {
@@ -416,8 +424,8 @@ class AcquisitionParameters {
 
 
 function calculateSignal () {
-  if (expP.noise.val) {
-    let scale = expP.noise.val;
+  if (noise.val) {
+    let scale = noise.val;
     for (let i=0; i<sig.length; i++) {
       sig.real[i] = scale*(Math.random()-0.5);
       sig.imag[i] = scale*(Math.random()-0.5);
@@ -445,7 +453,7 @@ function calculateSignal () {
 
 function processSignal () {
   proc.real.set(time.real);
-  if (expP.quadrature()) {
+  if (acquP.quadrature()) {
     proc.imag.set(time.imag);
   }
   else {
@@ -480,6 +488,11 @@ function processSignal () {
     proc.real[i] = cos * re + sin * im;
     proc.imag[i] = cos * im - sin * re;
   }
+}
+
+function backCalculateSignal () {
+  proc.fftShift();
+  proc.InvFFT();
 }
 
 
@@ -676,7 +689,7 @@ function initVectorPlot () {
 
   var canvas = d3.select("#plot-spin-vector-svg");
   var svg = canvas.append("g").attr("class", "frame")
-  var margin = {top: 40, right: 40, bottom: 40, left: 40};
+  var margin = {top: 40, right: 40, bottom: 20, left: 20};
   var width = canvas.attr("width") - margin.left - margin.right;
   var height = canvas.attr("height") - margin.top - margin.bottom;
   var radius = 0.5*height;

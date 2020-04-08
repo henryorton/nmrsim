@@ -53,13 +53,6 @@
     stroke-width: 1;
 }
 
-body {
-  display: grid;
-  grid-template-columns: auto auto;
-  padding: 20px;
-  vertical-align: middle;  
-}
-
 .spins .param {
   width: 40px;
 }
@@ -77,27 +70,24 @@ body {
 }
 
 fieldset {
-  margin: 10px;
+  margin: 6px;
+  padding: 4px;
 }
 
 
 input[type='text'] {
-  width:60px;
+  margin:2px;
+  width:45px;
 }
 
 .spins .parameters {
-  width:40%;
+  width:35%;
   float: left;
-}
-
-.spins {
-  position: relative;
 }
 
 .plot-spin-vector {
   width:60%;
   float: left;
-  overflow:hidden;
 }
 
 .mouse-line {
@@ -108,6 +98,84 @@ input[type='text'] {
 .window {
   display:none;
 }
+
+.parameter-input {
+  float: left;
+  width: 45%;
+}
+
+.plots {
+  float:left;
+  width: 55%;
+}
+
+
+body { 
+  width: 100%;
+  max-width: 1100px;
+  margin: auto;
+  background-color: #ffffdd;
+}
+
+.acqu-proc-div {
+  width:100%;
+}
+
+.acquisitionParameters {
+  width:45%;
+  float:left;
+}
+
+.processingParameters {
+  width:45%;
+  float:left;
+}
+
+.window img {
+  display:block;
+  padding-top:10px;
+  height:20px;
+  margin-left:auto;
+  margin-right:auto;
+}
+
+
+
+#slider-bar {
+  width:70%;
+  margin:6px;
+}
+
+.slider {
+  width:95%;
+  float:bottom;
+}
+
+
+label {
+  font-size: 11pt;
+}
+
+
+h2 {
+  margin: 10px;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
