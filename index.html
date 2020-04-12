@@ -21,19 +21,19 @@
 
           <input type="radio" id="spin0-amplitudeCheck" name="checkVar">
           <label>I</label>
-          <input type="text" class="param amplitude" value="1"><br>
+          <input type="text" class="amplitude" value="1"><br>
 
           <input type="radio" id="spin0-offsetCheck" name="checkVar">
           <label>&Omega; (Hz)</label>
-          <input type="text" class="param offset" value="2"><br>
+          <input type="text" class="offset" value="2"><br>
 
           <input type="radio" id="spin0-phaseCheck" name="checkVar">
           <label>&Phi; (&#176;)</label>
-          <input type="text" class="param phase" value="0"><br>
+          <input type="text" class="phase" value="0"><br>
 
           <input type="radio" id="spin0-t2Check" name="checkVar">
           <label>T2 (s)</label>
-          <input type="text" class="param t2" value="0.5"><br>
+          <input type="text" class="t2" value="0.5"><br>
         </fieldset>
 
         <fieldset class="spin spin1">
@@ -41,19 +41,19 @@
 
           <input type="radio" id="spin1-amplitudeCheck" name="checkVar">
           <label>I</label>
-          <input type="text" class="param amplitude" value="0.0"><br>
+          <input type="text" class="amplitude" value="0.0"><br>
 
           <input type="radio" id="spin1-offsetCheck" name="checkVar">
           <label>&Omega; (Hz)</label>
-          <input type="text" class="param offset" value="-2"><br>
+          <input type="text" class="offset" value="-2"><br>
 
           <input type="radio" id="spin1-phaseCheck" name="checkVar">
           <label>&Phi; (&#176;)</label>
-          <input type="text" class="param phase" value="0"><br>
+          <input type="text" class="phase" value="0"><br>
 
           <input type="radio" id="spin1-t2Check" name="checkVar">
           <label>T2 (s)</label>
-          <input type="text" class="param t2" value="1"><br>
+          <input type="text" class="t2" value="1"><br>
         </fieldset>
 
         <input type="radio" id="experimentalNoiseCheck" name="checkVar">
@@ -131,6 +131,23 @@
 
         </div>
 
+        <div class="window trigonometric">
+          <img src="static/trig.svg"><br>
+
+          <input type="radio" id="trig_aCheck" name="checkVar">
+          <label for="trig_a">a:</label>
+          <input id="trig_a" type="text" value="1"><br>
+
+          <input type="radio" id="trig_bCheck" name="checkVar">
+          <label for="trig_b">b:</label>
+          <input id="trig_b" type="text" value="1"><br>
+
+          <input type="radio" id="trig_cCheck" name="checkVar">
+          <label for="trig_c">c:</label>
+          <input id="trig_c" type="text" value="1"><br>
+
+        </div>
+
       </fieldset>
 
     </div>
@@ -140,7 +157,7 @@
       <legend>Parameter slider</legend>
 
       <input id="slider-min" type="text" value="0">
-      <input type="range" min="0" max="100" value="50" id="slider-bar">
+      <input type="range" min="0" max="200" value="50" id="slider-bar">
       <input id="slider-max" type="text" value="1">
     </fieldset>
 

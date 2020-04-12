@@ -1,10 +1,11 @@
 
 // Global variables
 const ArrayType = Float64Array;
-const BYTES_PER_VALUE = ArrayType.BYTES_PER_ELEMENT; // 8 for 64 bit float, 4 for 32 bit float
-const MAX_BYTES = (2**16) * (BYTES_PER_VALUE) * (2); // 64k, 64 bit float, 2
+const MAX_POINTS = (2**12) // 16k data
+const MAX_ZEROFILL = (2**12) // 16k zerofill
+const MAX_BYTES = (MAX_POINTS + MAX_ZEROFILL) * ArrayType.BYTES_PER_ELEMENT * 2;
 const NUMBER_SPINS = 2;
-const ANI_DUR = 200;
+var ANI_DUR = 200;
 const PROC_PLOT_POINTS = 200;
 
 const signalDataBuffer = new ArrayBuffer(MAX_BYTES);
@@ -23,7 +24,7 @@ $(document).ready( () => {
 
 function initSignalArray(acquisitionPoints) {
   let n = acquisitionPoints;
-  if (n/2 > MAX_BYTES/BYTES_PER_VALUE) {
+  if (n > MAX_POINTS) {
     throw "Number of points too large"
     return false;
   }
@@ -32,14 +33,13 @@ function initSignalArray(acquisitionPoints) {
     imag: new ArrayType(signalDataBuffer, MAX_BYTES/2, n),
   };
   sig.length = sig.real.length;
-  sig.real[0]=1.0
 };
 
 function initTimeArray(zeroFillingPoints) {
   let n = sig.length;
   let z = zeroFillingPoints;
-  if (n/2 > MAX_BYTES/BYTES_PER_VALUE) {
-    throw "Number of points too large"
+  if (z > MAX_ZEROFILL) {
+    throw "Number of zero-filling points too large"
     return false;
   }
   time = {
@@ -88,14 +88,29 @@ function initSpins(number) {
 // Parameter class to handle input filters, ranges and types
 // Parameter type can be spin, acquisition, processing
 class Parameter {
-  constructor(input_id, parameter_type, input_type=null, factor=1.0, range=null) {
+  constructor(input_id, parameter_type, input_type=null, factor=1.0, range=null, bounds=null) {
     this.val = null;
+    this.bounds = bounds;
     this.range = range;
     this.factor = factor;
     this.parameter_type = parameter_type;
+    this.input_type = input_type;
     this.id = input_id;
     this.elem = $(input_id)
     this.elem.addClass("parameter")
+
+    if (parameter_type=="spin") {
+      let s = input_id.split(" ")
+      this.check = $(`#${s[0].slice(1)}-${s[1].slice(1)}Check`)
+    }
+    else {
+      this.check = $(`${input_id}Check`)
+    }
+
+    this.check.on("change", e => {
+      slider.change_parameter(this);
+    })
+
     if (input_type) {
       switch (input_type) {
         case "float":
@@ -131,6 +146,11 @@ class Parameter {
     });
 
     this.elem.on("focusout", e => this.store());
+
+  }
+
+  deregister () {
+    this.elem.off();
   }
 
   store(value=this.elem.val()) {
@@ -140,14 +160,17 @@ class Parameter {
       this.set_field();
       return false;
     }
-    if (this.range) {
-      if (!(val >= this.range[0] && val <= this.range[1])) {
-        alert(`Input out of range: [${this.range}]`);
+    if (this.bounds) {
+      if (!(val >= this.bounds[0] && val <= this.bounds[1])) {
+        alert(`Input out of range: [${this.bounds}]`);
         this.set_field();
         return false;
       }
     }
     this.val = val * this.factor;
+    if (slider.par==this) {
+      slider.parameter_value_change()
+    }
     return true
   }
 
@@ -156,7 +179,7 @@ class Parameter {
   }
 
   set_value(value) {
-    this.value = value;
+    this.val = value;
     this.set_field();
   }
 
@@ -165,10 +188,10 @@ class Parameter {
 
 class Spin {
   constructor(spin_class, amplitude=0.0, offset=0.0, phase=0.0, r2=0.0) {
-    this.amplitude = new Parameter(`${spin_class} .amplitude`, "spin", "float");
-    this.offset = new Parameter(`${spin_class} .offset`, "spin", "float", 2*PI);
-    this.phase = new Parameter(`${spin_class} .phase`, "spin", "float", (PI/180));
-    this.t2 = new Parameter(`${spin_class} .t2`, "spin", "ufloat");
+    this.amplitude = new Parameter(`${spin_class} .amplitude`, "spin", "float", 1.0, [-2,2]);
+    this.offset = new Parameter(`${spin_class} .offset`, "spin", "float", 2*PI, [-50,50]);
+    this.phase = new Parameter(`${spin_class} .phase`, "spin", "float", PI/180, [0,360]);
+    this.t2 = new Parameter(`${spin_class} .t2`, "spin", "ufloat", 1.0, [0,1]);
   }
 
   evolution(time) {
@@ -180,9 +203,169 @@ class Spin {
 }
 
 
+class Slider {
+  constructor (slider_id, min_id, max_id, points=200) {
+    this.slider = $(slider_id);
+    this.min = $(min_id)
+    this.max = $(max_id)
+    this.points = points;
+    this.par = null;
+
+    this.slider.on("input", e => {
+      this.slider_change()
+    })
+
+  }
+
+  get minv () {
+    return this.par.parser(this.min.val())
+  }
+
+  get maxv () {
+    return this.par.parser(this.max.val())
+  }
+
+  pos_from_par (value=this.par.val / this.par.factor) {
+    return (value - this.minv) * (this.points / (this.maxv - this.minv))
+  }
+
+  par_from_pos (value=this.slider.val()) {
+    let val = this.par.parser(value);
+    return ((val / this.points) * (this.maxv - this.minv)) + this.minv
+  }
+
+  change_parameter (parameter) {
+    this.par = parameter;
+    let val = this.par.val
+    let min = this.par.range[0]
+    let max = this.par.range[1]
+    if (val < min) {
+      this.min.val(val)
+      this.par.range[0] = val;
+    }
+    else {
+      this.min.val(min)
+    }
+    if (val > max) {
+      this.max.val(val)
+      this.par.range[1] = val;
+    }
+    else {
+      this.max.val(max)
+    }
+    this.slider.val(this.pos_from_par());
+
+    this.min.off();
+    this.max.off();
+    this.min.inputFilter(value => this.par.regex.test(value))
+    this.max.inputFilter(value => this.par.regex.test(value))
+    this.min.on("keypress focusout", e => {
+      if (e.which == 13 | e.type == "focusout") {
+        this.min_change();
+      }
+    })
+    this.max.on("keypress focusout", e => {
+      if (e.which == 13 | e.type == "focusout") {
+        this.max_change();
+      }
+    })
+
+
+  }
+
+  slider_change () {
+    this.par.store(this.par_from_pos());
+    this.par.set_field();
+    let id = this.par.id.slice(1)
+    if (acquP.variables.includes(id)) {
+      acquP.setVariable(id);
+    }
+    let lastAniDur = ANI_DUR;
+    ANI_DUR = 0;
+    update(this.par.parameter_type)
+    ANI_DUR = lastAniDur;
+  }
+
+  parameter_value_change () {
+    let val = this.par.val / this.par.factor
+    if (val < this.minv) {
+      this.min.val(val)
+      this.par.range[0] = val;
+    }
+    if (val > this.maxv) {
+      this.max.val(val)
+      this.par.range[1] = val;
+    }
+    this.slider.val(this.pos_from_par());
+  }
+
+  min_change () {
+    var val = this.par.val / this.par.factor;
+    var min = this.minv;
+    if (isNaN(min)) {
+      alert("Invalid input");
+      this.change_parameter(this.par);
+      return;
+    }
+    if (this.par.bounds) {
+      if (!(min >= this.par.bounds[0] && min <= this.par.bounds[1])) {
+        alert(`Input out of range: [${this.par.bounds}]`);
+        this.change_parameter(this.par);
+        return;
+      }
+    }
+    if (this.minv > this.maxv) {
+      this.max.val(this.min.val());
+    }
+    if (val < this.minv) {
+      this.par.store(this.minv)
+      this.par.set_field();
+      var pos = this.pos_from_par(this.minv);
+    }
+    else {
+      var pos = this.pos_from_par()
+    }
+    this.par.range[0] = this.minv
+    this.parameter_value_change()
+  }
+
+  max_change () {
+    var val = this.par.val / this.par.factor;
+    var max = this.maxv;
+    if (isNaN(max)) {
+      alert("Invalid input");
+      this.change_parameter(this.par);
+      return;
+    }
+    if (this.par.bounds) {
+      if (!(max >= this.par.bounds[0] && max <= this.par.bounds[1])) {
+        alert(`Input out of range: [${this.par.bounds}]`);
+        this.change_parameter(this.par);
+        return;
+      }
+    }
+    if (this.maxv < this.minv) {
+      this.min.val(this.max.val());
+    }
+    if (val > this.maxv) {
+      this.par.store(this.maxv)
+      this.par.set_field();
+      var pos = this.pos_from_par(this.maxv);
+    }
+    else {
+      var pos = this.pos_from_par()
+    }
+    this.par.range[1] = this.maxv
+    this.parameter_value_change()
+  }
+
+}
+
+
 function initAll() {
+  slider = new Slider("#slider-bar", "#slider-min", "#slider-max");
   spins = initSpins(NUMBER_SPINS);
-  noise = new Parameter("#experimentalNoise", "acquisition", "ufloat")
+  noise = new Parameter("#experimentalNoise", "acquisition", "ufloat", 1.0, [0,1]);
   acquP = new AcquisitionParameters();
   procP = new ProcessParameters();
 
@@ -211,14 +394,14 @@ function update(parameter_type) {
 
 class ProcessParameters {
   constructor () {
-    this.zeroFilling = new Parameter("#zeroFilling", "processing", "uint")
-    this.phcor0 = new Parameter("#phaseCorrection0", "processing", "float", PI/180)
-    this.phcor1 = new Parameter("#phaseCorrection1", "processing", "float", PI/180)
+    this.zeroFilling = new Parameter("#zeroFilling", "processing", "uint", 1.0, [2,2048] ,[0, MAX_ZEROFILL])
+    this.phcor0 = new Parameter("#phaseCorrection0", "processing", "float", PI/180, [-180,180])
+    this.phcor1 = new Parameter("#phaseCorrection1", "processing", "float", PI/180, [-360,360])
 
     this.windows = {
       none: {},
       exponential: {
-        a: new Parameter("#exp_a", "processing", "ufloat")
+        a: new Parameter("#exp_a", "processing", "ufloat", 1.0, [0,20])
       },
       gaussian: {},
       trigonometric: {}
@@ -289,16 +472,18 @@ class AcquisitionParameters {
     this.variables = ["numberPoints","acquisitionTime","spectralWidth","dwellTime"];
 
     this.pars = {
-      numberPoints: new Parameter("#numberPoints", "acquisition", "uint"),
-      acquisitionTime: new Parameter("#acquisitionTime", "acquisition", "ufloat"),
-      dwellTime: new Parameter("#dwellTime", "acquisition", "ufloat"),
-      spectralWidth: new Parameter("#spectralWidth", "acquisition", "ufloat"),
-      carrierFrequency: new Parameter("#carrierFrequency", "acquisition", "float"),
+      numberPoints: new Parameter("#numberPoints", "acquisition", "uint", 1.0, [2,2048], [0, MAX_POINTS]),
+      acquisitionTime: new Parameter("#acquisitionTime", "acquisition", "ufloat", 1.0, [0,1]),
+      dwellTime: new Parameter("#dwellTime", "acquisition", "ufloat", 1.0, [0.0001, 0.1]),
+      spectralWidth: new Parameter("#spectralWidth", "acquisition", "ufloat", 1.0, [10,500]),
+      carrierFrequency: new Parameter("#carrierFrequency", "acquisition", "float", 1.0, [-50,50]),
     }
+    this.numberPoints = this.pars.numberPoints.val
+    this.acquisitionTime = this.pars.acquisitionTime.val
 
     this.variables.forEach( v => {
       let par = this.pars[v]
-      par.elem.off("keypress");
+      par.elem.off();
       par.elem.on("keypress", e => {
         if (e.which==13) {
           if (par.store()) {
@@ -311,18 +496,6 @@ class AcquisitionParameters {
         this.setVariable(v);
       })
     })
-  }
-  get numberPoints () {
-    return this.pars.numberPoints.val;
-  }
-  set numberPoints (value) {
-    this.pars.numberPoints.val = value;
-  }
-  get acquisitionTime () {
-    return this.pars.acquisitionTime.val;
-  }
-  set acquisitionTime (value) {
-    this.pars.acquisitionTime.val = value;
   }
   get dwellTime () {
     return this.acquisitionTime / this.numberPoints;
@@ -357,8 +530,8 @@ class AcquisitionParameters {
     })
   }
   populate () {
-    this.pars.numberPoints.set_field();
-    this.pars.acquisitionTime.set_field();
+    this.pars.numberPoints.set_field(this.numberPoints);
+    this.pars.acquisitionTime.set_field(this.acquisitionTime);
     this.pars.dwellTime.set_field(this.dwellTime);
     this.pars.spectralWidth.set_field(this.spectralWidth)
   }
@@ -394,7 +567,7 @@ class AcquisitionParameters {
     this.validate("acquisitionTime", "numberPoints");
 
     if (this.lastSet!="numberPoints") {
-      this.numberPoints = math.round(this.acquisitionTime / this.dwellTime);
+      this.numberPoints = math.round(value / this.dwellTime);
     }
     this.acquisitionTime = value;
 
@@ -596,7 +769,7 @@ function updateProcessingPlots (tdPlot, fqPlot) {
   let sw = acquP.spectralWidth;
   var range = fqPlot.range;
   let pline = d3.line()
-    .x( (d, i) => fqPlot.xScale((0.5 - i/phdata.length)*sw) )
+    .x( (d, i) => fqPlot.xScale((0.5 - i/phdata.length)*sw + acquP.carrierFrequency))
     .y(  d     => fqPlot.yScale(d * range) )
 
   fqPlot.proc.datum(phdata)
