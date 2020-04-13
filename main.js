@@ -191,7 +191,7 @@ class Spin {
     this.amplitude = new Parameter(`${spin_class} .amplitude`, "spin", "float", 1.0, [-2,2]);
     this.offset = new Parameter(`${spin_class} .offset`, "spin", "float", 2*PI, [-50,50]);
     this.phase = new Parameter(`${spin_class} .phase`, "spin", "float", PI/180, [0,360]);
-    this.t2 = new Parameter(`${spin_class} .t2`, "spin", "ufloat", 1.0, [0.0001,1]);
+    this.t2 = new Parameter(`${spin_class} .t2`, "spin", "ufloat", 1.0, [0,1]);
   }
 
   evolution(time) {
