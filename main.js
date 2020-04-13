@@ -1,8 +1,8 @@
 
 // Global variables
 const ArrayType = Float64Array;
-const MAX_POINTS = (2**12) // 16k data
-const MAX_ZEROFILL = (2**12) // 16k zerofill
+const MAX_POINTS = (2**12) // 4k data
+const MAX_ZEROFILL = (2**12) // 4k zerofill
 const MAX_BYTES = (MAX_POINTS + MAX_ZEROFILL) * ArrayType.BYTES_PER_ELEMENT * 2;
 const NUMBER_SPINS = 2;
 var ANI_DUR = 200;
@@ -403,8 +403,15 @@ class ProcessParameters {
       exponential: {
         a: new Parameter("#exp_a", "processing", "ufloat", 1.0, [0,20])
       },
-      gaussian: {},
-      trigonometric: {}
+      gaussian: {
+        a: new Parameter("#gauss_a", "processing", "ufloat", 1.0, [0,20]),
+        b: new Parameter("#gauss_b", "processing", "ufloat", 1.0, [0,20]),
+      },
+      trigonometric: {
+        a: new Parameter("#trig_a", "processing", "ufloat", 1.0, [0,2]),
+        b: new Parameter("#trig_b", "processing", "ufloat", 1.0, [0,1]),
+        c: new Parameter("#trig_c", "processing", "uint", 1.0, [0,4]),
+      }
     }
 
     this.windowName = $("#windowFunction").val()
@@ -423,45 +430,42 @@ class ProcessParameters {
       case "exponential":
         return this.exp_func();
       break;
+      case "gaussian":
+        return this.gauss_func();
+      break;
+      case "trigonometric":
+        return this.trig_func();
+      break;
     }
   }
 
-  exp_func () {
-    let a = this.windows.exponential.a.val
+  exp_func (a=this.windows.exponential.a.val) {
     return function (t) {
       return Math.exp(-PI * a * t)
     }
   }
 
   gauss_func () {
-    let a = this.windows.gaussian.a.val
+    let a = this.windows.gaussian.a.val;
+    let b = this.windows.gaussian.b.val;
+    let taq = acquP.dwellTime * sig.length;
+    if (b==0) {
+      return this.exp_func(a);
+    }
     return function (t) {
-      return Math.exp( -a*PI*t - b*t*t)
+      return Math.exp( -a*PI*t - (a*PI*t*t)/(2*b*taq))
     }
   }
 
-
-
-  // EM[i] = exp( -PI*i*lb/sw )
-
-  // SP[i] = sin( PI*off + PI*(end-off)*i/(tSize-1) )^pow
-
-//           GMB[i] = exp( -PI*lb*t + (PI*lb/(2.0*gb*aq))*t*t )
-//           t  = i/sw
-//           aq = tSize/sw
-//           a  = PI*lb
-//           b  = -a/(2.0*gb*aq)
-
-
-
-// Given the GMB adjustable parameters lb and gb:
-
-//           GMB[i] = exp( -a*t - b*t*t )
-// where
-//           t  = i/sw
-//           aq = tSize/sw
-//           a  = PI*lb
-//           b  = -a/(2.0*gb*aq)
+  trig_func () {
+    let a = this.windows.trigonometric.a.val;
+    let b = this.windows.trigonometric.b.val;
+    let c = this.windows.trigonometric.c.val;
+    let taq = acquP.dwellTime * sig.length;
+    return function (t) {
+      return Math.sin(PI*a + PI*(b-a) * (t/taq))**c
+    }
+  }
 
 }
 
@@ -731,7 +735,7 @@ function updateProcessingPlots (tdPlot, fqPlot) {
   let wfunc = procP.window;
   if (wfunc) {
     var wfdata = new Float64Array(PROC_PLOT_POINTS);
-    let taq = acquP.dwellTime * proc.length;
+    let taq = acquP.dwellTime * sig.length;
     for (let i=0; i<PROC_PLOT_POINTS; i++) {
       let t = (i/PROC_PLOT_POINTS) * taq
       wfdata[i] = wfunc(t);
@@ -740,7 +744,7 @@ function updateProcessingPlots (tdPlot, fqPlot) {
     var wfdata = [0];
   }
 
-  let fac = (acquP.dwellTime * proc.length) / wfdata.length;
+  let fac = (acquP.dwellTime * sig.length) / wfdata.length;
   var range = tdPlot.range;
   let wline = d3.line()
     .x( (d, i) => tdPlot.xScale(fac * i) )
@@ -909,14 +913,93 @@ function initVectorPlot () {
       .attr("font-size", "10")
       .attr("fill", "white")
       .attr("stroke", "none")
-
   })
+
+  let legh = 20;
+  let legw = 70;
 
   svg.append("g")
     .attr("class", "td-mouse-over vector sum")
     .attr("visibility", "hidden")
     .append("line")
     .attr("marker-end", appendArrowheadMarker(svg, "sum"));
+
+  let realG = svg.append("g")
+    .attr("transform", `translate(80, ${-0.5*legh-100})`)
+    .attr("class", "legend real")
+
+  realG.append("text")
+    .text("real:")
+    .attr("fill", "black")
+    .attr("font-size", "14")
+    .attr("alignment-baseline", "middle")
+
+  realG.append("line")
+    .attr("class", "line_real")
+    .attr("x1", 35)
+    .attr("x2", legw)
+
+  realG.append("rect")
+    .attr("fill", "none")
+    .attr("opacity", 0.5)
+    .attr("pointer-events", "all")
+    .attr("width", legw)
+    .attr("height", legh)
+    .attr("y", -legh*0.5)
+    .on("click", () => {
+      let sele = d3.selectAll(".line_real")
+      let opac = parseFloat(sele.style("opacity"))
+      if (opac < 0.5){
+         sele.transition()
+          .duration(ANI_DUR)
+          .style("opacity", 1);
+      }
+      else {
+        sele.transition()
+          .duration(ANI_DUR)
+          .style("opacity", 0.15);
+      }
+    })
+
+
+  let imagG = svg.append("g")
+    .attr("transform", `translate(80, ${0.5*legh-100})`)
+    .attr("class", "legend imag")
+
+  imagG.append("text")
+    .text("imag:")
+    .attr("fill", "black")
+    .attr("font-size", "14")
+    .attr("alignment-baseline", "middle")
+
+  imagG.append("line")
+    .attr("class", "line_imag")
+    .attr("x1", 35)
+    .attr("x2", legw)
+
+  imagG.append("rect")
+    .attr("fill", "none")
+    .attr("opacity", 0.5)
+    .attr("pointer-events", "all")
+    .attr("width", legw)
+    .attr("height", legh)
+    .attr("y", -legh*0.5)
+    .on("click", () => {
+      let sele = d3.selectAll(".line_imag")
+      let opac = parseFloat(sele.style("opacity"))
+      if (opac < 0.5){
+         sele.transition()
+          .duration(ANI_DUR)
+          .style("opacity", 1);
+      }
+      else {
+        sele.transition()
+          .duration(ANI_DUR)
+          .style("opacity", 0.15);
+      }
+    })
+
+
 
   return {
     svg: svg,
@@ -971,7 +1054,8 @@ function initMouseOverEffects (tdPlot, vcPlot) {
     })
     .on('mousemove', () => {
       let mouse = d3.mouse(d3.event.currentTarget);
-      let p = Math.abs(Math.round( tdPlot.xScale.invert(mouse[0]) / acquP.dwellTime))
+      let t_abs = tdPlot.xScale.invert(mouse[0])
+      let p = Math.abs(Math.round( t_abs / acquP.dwellTime))
       let t = p * acquP.dwellTime;
       let loc = tdPlot.xScale(t);
       if (p < proc.length) {
@@ -982,7 +1066,7 @@ function initMouseOverEffects (tdPlot, vcPlot) {
           .attr("x2", (proc.real[p] / tdPlot.range) * vcPlot.radius)
           .attr("y2", -(proc.imag[p] / tdPlot.range) * vcPlot.radius)
         spins.forEach( (spin, i) => {
-          let mag = spin.evolution(t);
+          let mag = spin.evolution(t_abs);
           let theta = Math.atan2(mag.real, mag.imag) - PI/2
           d3.select(`#plot-spin-vector-svg .vector.spin${i}`)
             .select("line")
@@ -998,138 +1082,6 @@ function initMouseOverEffects (tdPlot, vcPlot) {
 
 
 
-
-
-
-
-
-
-// function updateTimeDomainPlot (plot) {
-
-//   let range = math.max([math.abs(math.re(timeDomain)), math.abs(math.im(timeDomain))])
-//   plot.range = range;
-//   plot.yScale.domain([-range, range])
-//   plot.yaxis.transition()
-//     .duration(animationDuration)
-//     .call(d3.axisLeft(plot.yScale))
-
-//   plot.xScale.domain([0, acquisitionTime])
-//   plot.xaxis.transition()
-//     .duration(animationDuration)
-//     .call(d3.axisBottom(plot.xScale))
-
-//   let line = d3.line()
-//     .x( (d, i) => plot.xScale(timeAxis[i]) )
-//     .y(  d     => plot.yScale(d) );
-
-//   plot.real.datum(math.re(timeDomain))
-//     .transition()
-//     .duration(animationDuration)
-//     .attr("d", line)
-
-//   plot.imag.datum(math.im(timeDomain))
-//     .transition()
-//     .duration(animationDuration)
-//     .attr("d", line)
-
-// }
-
-
-// function updateFreqDomainPlot (plot) {
-
-//   plot.yScale.domain(d3.extent(math.re(freqDomain).concat(math.im(freqDomain))))
-//   plot.yaxis.transition()
-//     .duration(animationDuration)
-//     .call(d3.axisLeft(plot.yScale))
-
-//   plot.xScale.domain([0.5*spectralWidth + carrierFrequency, -0.5*spectralWidth + carrierFrequency])
-//   plot.xaxis.transition()
-//     .duration(animationDuration)
-//     .call(d3.axisBottom(plot.xScale))
-
-//   let line = d3.line()
-//     .x( (d, i) => plot.xScale(freqAxis[i]) )
-//     .y(  d     => plot.yScale(d) );
-
-//   plot.real.datum(math.re(freqDomain))
-//     .transition()
-//     .duration(animationDuration)
-//     .attr("d", line)
-
-//   plot.imag.datum(math.im(freqDomain))
-//     .transition()
-//     .duration(animationDuration)
-//     .attr("d", line)
-
-// }
-
-// function update () {
-//   t0 = performance.now()
-//   aPars.storeCurrent();
-//   populateVariables();
-//   initAxes();
-//   calculateSignal();
-//   processSignal();
-//   updateTimeDomainPlot(tdPlot);
-//   updateFreqDomainPlot(fqPlot);
-//   t1 = performance.now()
-//   console.log(t1-t0)
-// }
-
-
-// (function($) {
-//   $.fn.inputFilter = function(inputFilter) {
-//     return this.on("input keydown keyup mousedown mouseup select contextmenu drop", function() {
-//       if (inputFilter(this.value)) {
-//         this.oldValue = this.value;
-//         this.oldSelectionStart = this.selectionStart;
-//         this.oldSelectionEnd = this.selectionEnd;
-//       } else if (this.hasOwnProperty("oldValue")) {
-//         this.value = this.oldValue;
-//         this.setSelectionRange(this.oldSelectionStart, this.oldSelectionEnd);
-//       } else {
-//         this.value = "";
-//       }
-//     });
-//   };
-// }(jQuery));
-
-
-// function initInputFilters () {
-//   $("#numberPoints").inputFilter( value => /^\d*$/.test(value) );
-//   $("#acquisitionTime").inputFilter( value => /^\d*[.]?\d*$/.test(value) );
-//   $("#spectralWidth").inputFilter( value => /^\d*[.]?\d*$/.test(value) );
-//   $("#dwellTime").inputFilter( value => /^\d*[.]?\d*$/.test(value) );
-//   $("#carrierFrequency").inputFilter( value => /^-?\d*[.]?\d*$/.test(value) );
-
-//   $(".spins .amplitude").each( (i, elem) => {
-//     $(elem).inputFilter( value => /^\d*[.]?\d*$/.test(value) )
-//   })
-//   $(".spins .offset").each( (i, elem) => {
-//     $(elem).inputFilter( value => /^-?\d*[.]?\d*$/.test(value) )
-//   })
-//   $(".spins .t2").each( (i, elem) => {
-//     $(elem).inputFilter( value => /^\d*[.]?\d*$/.test(value) )
-//   })
-//   $(".spins .phase").each( (i, elem) => {
-//     $(elem).inputFilter( value => /^-?\d*[.]?\d*$/.test(value) )
-//   })
-// }
-
-
-// $(document).ready( () => {
-//   $(document).on('keypress',function(e) {
-//     if(e.which == 13) {
-//       update();
-//     }
-//   });
-
-//   initInputFilters();
-//   update();
-
- 
-
-// });
 
 
 

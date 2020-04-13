@@ -101,7 +101,7 @@
 
         <input type="radio" id="zeroFillingCheck" name="checkVar">
         <label for="zeroFilling">Zero filling:</label>
-        <input id="zeroFilling" type="text" value="256"><br>
+        <input id="zeroFilling" type="text" value="0"><br>
 
         <input type="radio" id="phaseCorrection0Check" name="checkVar">
         <label for="phaseCorrection0">Phase corr. 0th (&#176;):</label>
@@ -123,7 +123,7 @@
         </div>
 
         <div class="window exponential">
-          <img src="static/exp.svg"><br>
+          <img src="static/exp.svg" height="25px"><br>
 
           <input type="radio" id="exp_aCheck" name="checkVar">
           <label for="exp_a">a:</label>
@@ -132,19 +132,32 @@
         </div>
 
         <div class="window trigonometric">
-          <img src="static/trig.svg"><br>
+          <img src="static/trig.svg" height="40px"><br>
 
           <input type="radio" id="trig_aCheck" name="checkVar">
           <label for="trig_a">a:</label>
-          <input id="trig_a" type="text" value="1"><br>
+          <input id="trig_a" type="text" value="0.5"><br>
 
           <input type="radio" id="trig_bCheck" name="checkVar">
           <label for="trig_b">b:</label>
-          <input id="trig_b" type="text" value="1"><br>
+          <input id="trig_b" type="text" value="0.95"><br>
 
           <input type="radio" id="trig_cCheck" name="checkVar">
           <label for="trig_c">c:</label>
-          <input id="trig_c" type="text" value="1"><br>
+          <input id="trig_c" type="text" value="2"><br>
+
+        </div>
+
+        <div class="window gaussian">
+          <img src="static/gauss.svg" height="35px"><br>
+
+          <input type="radio" id="gauss_aCheck" name="checkVar">
+          <label for="gauss_a">a:</label>
+          <input id="gauss_a" type="text" value="1"><br>
+
+          <input type="radio" id="gauss_bCheck" name="checkVar">
+          <label for="gauss_b">b:</label>
+          <input id="gauss_b" type="text" value="0.25"><br>
 
         </div>
 
