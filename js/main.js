@@ -416,9 +416,9 @@ class ProcessParameters {
 
     this.windowName = $("#windowFunction").val()
     $("#windowFunction").on("change", e => {
-      $(`.window.${this.windowName}`).hide(1000);
+      $(`.window.${this.windowName}`).hide(100);
       this.windowName = e.target.value;
-      $(`.window.${this.windowName}`).show(1000);
+      $(`.window.${this.windowName}`).show(100);
     })
   }
 
@@ -561,7 +561,7 @@ class AcquisitionParameters {
     if (this.lastSet!="acquisitionTime") {
       this.acquisitionTime = this.dwellTime * value;
     }
-    this.numberPoints = math.round(value);
+    this.numberPoints = Math.round(value);
 
     this.lastLastSet = this.lastSet;
     this.lastSet = "numberPoints";
@@ -571,7 +571,7 @@ class AcquisitionParameters {
     this.validate("acquisitionTime", "numberPoints");
 
     if (this.lastSet!="numberPoints") {
-      this.numberPoints = math.round(value / this.dwellTime);
+      this.numberPoints = Math.round(value / this.dwellTime);
     }
     this.acquisitionTime = value;
 
@@ -585,7 +585,7 @@ class AcquisitionParameters {
       this.acquisitionTime = this.numberPoints / value;
     }
     else {
-      this.numberPoints = math.round(this.acquisitionTime * value);
+      this.numberPoints = Math.round(this.acquisitionTime * value);
     }
 
     this.lastLastSet = this.lastSet;
