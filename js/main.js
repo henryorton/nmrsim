@@ -191,7 +191,7 @@ class Spin {
     this.amplitude = new Parameter(`${spin_class} .amplitude`, "spin", "float", 1.0, [-2,2]);
     this.offset = new Parameter(`${spin_class} .offset`, "spin", "float", 2*PI, [-50,50]);
     this.phase = new Parameter(`${spin_class} .phase`, "spin", "float", PI/180, [0,360]);
-    this.t2 = new Parameter(`${spin_class} .t2`, "spin", "ufloat", 1.0, [0.0001,1]);
+    this.t2 = new Parameter(`${spin_class} .t2`, "spin", "ufloat", 1.0, [0,1]);
   }
 
   evolution(time) {
@@ -381,16 +381,16 @@ function initAll() {
 
 function update(parameter_type) {
   initSignalArray(acquP.numberPoints);
-  initTimeArray(procP.zeroFilling.val)
-  initProcessArray()
+  initTimeArray(procP.zeroFilling.val);
+  initProcessArray();
   calculateSignal();
-  processSignal();
-  updateFreqDomainPlot(fqPlot);
-  proc.fftShift();
-  proc.InvFFT();
+  processTimeDomain();
   updateTimeDomainPlot(tdPlot);
+  processFrequencyDomain();
+  updateFreqDomainPlot(fqPlot);
   updateProcessingPlots(tdPlot, fqPlot);
 }
+
 
 class ProcessParameters {
   constructor () {
@@ -628,7 +628,8 @@ function calculateSignal () {
   })
 }
 
-function processSignal () {
+function processTimeDomain () {
+
   proc.real.set(time.real);
   if (acquP.quadrature()) {
     proc.imag.set(time.imag);
@@ -647,6 +648,9 @@ function processSignal () {
       proc.imag[i] *= a;
     }
   }
+}
+
+function processFrequencyDomain () {
 
   proc.FFT();
   proc.fftShift();
@@ -671,10 +675,6 @@ function backCalculateSignal () {
   proc.fftShift();
   proc.InvFFT();
 }
-
-
-
-
 
 
 function initPlot (canvas_id) {
@@ -1063,8 +1063,8 @@ function initMouseOverEffects (tdPlot, vcPlot) {
           .attr("d", () => `M${loc},${tdPlot.height} ${loc},0`);
         d3.select("#plot-spin-vector-svg .vector.sum")
           .select("line")
-          .attr("x2", (proc.real[p] / tdPlot.range) * vcPlot.radius)
-          .attr("y2", -(proc.imag[p] / tdPlot.range) * vcPlot.radius)
+          .attr("x2", (time.real[p] / tdPlot.range) * vcPlot.radius)
+          .attr("y2", -(time.imag[p] / tdPlot.range) * vcPlot.radius)
         spins.forEach( (spin, i) => {
           let mag = spin.evolution(t_abs);
           let theta = Math.atan2(mag.real, mag.imag) - PI/2
