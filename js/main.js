@@ -35,6 +35,7 @@ function initSignalArray(acquisitionPoints) {
   sig.length = sig.real.length;
 };
 
+
 function initTimeArray(zeroFillingPoints) {
   let n = sig.length;
   let z = zeroFillingPoints;
@@ -51,12 +52,14 @@ function initTimeArray(zeroFillingPoints) {
   time.imag.fill(0.0, n, n+z);
 }
 
+
 function initProcessArray() {
   let nz = time.length;
   let procR = new ArrayType(procDataBuffer, 0, nz);
   let procI = new ArrayType(procDataBuffer, MAX_BYTES/2, nz);
   proc = new ComplexArray(0, ArrayType).from_ri(procR, procI);
 }
+
 
 function initSpins(number) {
   let spins = []
@@ -65,6 +68,7 @@ function initSpins(number) {
   }
   return spins
 }
+
 
 // Regex input filter for text
 (function($) {
@@ -182,7 +186,6 @@ class Parameter {
     this.val = value;
     this.set_field();
   }
-
 }
 
 
@@ -358,7 +361,6 @@ class Slider {
     this.par.range[1] = this.maxv
     this.parameter_value_change()
   }
-
 }
 
 
@@ -375,7 +377,6 @@ function initAll() {
   initMouseOverEffects(tdPlot, vcPlot)
 
   update();
-
 }
 
 
@@ -405,7 +406,6 @@ class ProcessParameters {
       },
       gaussian: {
         a: new Parameter("#gauss_a", "processing", "ufloat", 1.0, [0,20]),
-        b: new Parameter("#gauss_b", "processing", "ufloat", 1.0, [0,20]),
       },
       trigonometric: {
         a: new Parameter("#trig_a", "processing", "ufloat", 1.0, [0,2]),
@@ -439,21 +439,17 @@ class ProcessParameters {
     }
   }
 
-  exp_func (a=this.windows.exponential.a.val) {
+  exp_func () {
+    let a = this.windows.exponential.a.val;
     return function (t) {
-      return Math.exp(-PI * a * t)
+      return Math.exp(-1 * PI * a * t)
     }
   }
 
   gauss_func () {
     let a = this.windows.gaussian.a.val;
-    let b = this.windows.gaussian.b.val;
-    let taq = acquP.dwellTime * sig.length;
-    if (b==0) {
-      return this.exp_func(a);
-    }
     return function (t) {
-      return Math.exp( -a*PI*t - (a*PI*t*t)/(2*b*taq))
+      return Math.exp(-1*(PI * a * t)**2)
     }
   }
 
@@ -466,8 +462,8 @@ class ProcessParameters {
       return Math.sin(PI*a + PI*(b-a) * (t/taq))**c
     }
   }
-
 }
+
 
 class AcquisitionParameters {
   constructor () {
@@ -598,8 +594,6 @@ class AcquisitionParameters {
 }
 
 
-
-
 function calculateSignal () {
   if (noise.val) {
     let scale = noise.val;
@@ -628,6 +622,7 @@ function calculateSignal () {
   })
 }
 
+
 function processTimeDomain () {
 
   proc.real.set(time.real);
@@ -650,6 +645,7 @@ function processTimeDomain () {
   }
 }
 
+
 function processFrequencyDomain () {
 
   proc.FFT();
@@ -670,6 +666,7 @@ function processFrequencyDomain () {
     proc.imag[i] = cos * im - sin * re;
   }
 }
+
 
 function backCalculateSignal () {
   proc.fftShift();
@@ -729,7 +726,6 @@ function initPlot (canvas_id) {
 }
 
 
-
 function updateProcessingPlots (tdPlot, fqPlot) {
 
   let wfunc = procP.window;
@@ -780,7 +776,6 @@ function updateProcessingPlots (tdPlot, fqPlot) {
     .transition()
     .duration(ANI_DUR)
     .attr("d", pline)
-
 }
 
 
@@ -819,8 +814,8 @@ function updateTimeDomainPlot (plot) {
     .transition()
     .duration(ANI_DUR)
     .attr("d", line)
-
 }
+
 
 function updateFreqDomainPlot (plot) {
 
@@ -858,7 +853,6 @@ function updateFreqDomainPlot (plot) {
     .transition()
     .duration(ANI_DUR)
     .attr("d", line)
-
 }
 
 
@@ -1007,6 +1001,7 @@ function initVectorPlot () {
   }
 }
 
+
 function appendArrowheadMarker (svg, class_name) {
   let id = `${class_name}_arrowhead`
   svg.append("svg:defs").append("svg:marker")
@@ -1021,8 +1016,6 @@ function appendArrowheadMarker (svg, class_name) {
     .attr("d", "M 0 0 12 6 0 12 3 6")
   return `url(#${id})`;
 }
-
-
 
 
 function initMouseOverEffects (tdPlot, vcPlot) {
