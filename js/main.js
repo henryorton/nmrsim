@@ -678,7 +678,7 @@ function initPlot (canvas_id) {
 
   var canvas = d3.select(canvas_id);
   var svg = canvas.append("g").attr("class", "frame")
-  var margin = {top: 20, right: 20, bottom: 30, left: 30};
+  var margin = {top: 20, right: 20, bottom: 40, left: 30};
   var width = canvas.attr("width") - margin.left - margin.right;
   var height = canvas.attr("height") - margin.top - margin.bottom;
 
@@ -705,6 +705,20 @@ function initPlot (canvas_id) {
 
   svg.append("path")
     .attr("class", "line_real")
+
+  if (canvas_id=="#plot-time-domain-svg") {
+    var xLabel = "Time /s";
+  }
+  else {
+    var xLabel = "Frequency /Hz";
+  }
+
+  svg.append("text")
+    .attr("y", height + 35)
+    .attr("x", width / 2)
+    .style("text-anchor", "middle")
+    .style("font-size", "10pt")
+    .text(xLabel); 
 
   var plotData = {
     canvas : canvas,
