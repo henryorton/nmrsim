@@ -102,6 +102,7 @@ class Parameter {
     this.id = input_id;
     this.elem = $(input_id)
     this.elem.addClass("parameter")
+    this.on_store = () => {};
 
     if (parameter_type=="spin") {
       let s = input_id.split(" ")
@@ -153,11 +154,7 @@ class Parameter {
 
   }
 
-  deregister () {
-    this.elem.off();
-  }
-
-  store(value=this.elem.val()) {
+  store(value=this.elem.val(), onStore=true) {
     let val = this.parser(value);
     if (isNaN(val)) {
       alert("Invalid input");
@@ -175,6 +172,9 @@ class Parameter {
     if (slider.par==this) {
       slider.parameter_value_change()
     }
+    if (onStore) {
+      this.on_store();
+    }
     return true
   }
 
@@ -183,8 +183,13 @@ class Parameter {
   }
 
   set_value(value) {
-    this.val = value;
-    this.set_field();
+    if (this.store(value)) {
+      this.set_field();
+      return true;
+    }
+    else {
+      return false;
+    }
   }
 }
 
@@ -279,10 +284,6 @@ class Slider {
   slider_change () {
     this.par.store(this.par_from_pos());
     this.par.set_field();
-    let id = this.par.id.slice(1)
-    if (acquP.variables.includes(id)) {
-      acquP.setVariable(id);
-    }
     let lastAniDur = ANI_DUR;
     ANI_DUR = 0;
     update(this.par.parameter_type)
@@ -467,38 +468,30 @@ class ProcessParameters {
 
 class AcquisitionParameters {
   constructor () {
-    this.lastSet = "numberPoints";
-    this.lastLastSet = "acquisitionTime";
     this.variables = ["numberPoints","acquisitionTime","spectralWidth","dwellTime"];
 
     this.pars = {
-      numberPoints: new Parameter("#numberPoints", "acquisition", "uint", 1.0, [2,2048], [0, MAX_POINTS]),
+      numberPoints: new Parameter("#numberPoints", "acquisition", "uint", 1.0, [2,2048], [2, MAX_POINTS]),
       acquisitionTime: new Parameter("#acquisitionTime", "acquisition", "ufloat", 1.0, [0,1]),
       dwellTime: new Parameter("#dwellTime", "acquisition", "ufloat", 1.0, [0.0001, 0.1]),
       spectralWidth: new Parameter("#spectralWidth", "acquisition", "ufloat", 1.0, [10,500]),
       carrierFrequency: new Parameter("#carrierFrequency", "acquisition", "float", 1.0, [-50,50]),
     }
-    this.numberPoints = this.pars.numberPoints.val
-    this.acquisitionTime = this.pars.acquisitionTime.val
 
     this.variables.forEach( v => {
-      let par = this.pars[v]
-      par.elem.off();
-      par.elem.on("keypress", e => {
-        if (e.which==13) {
-          if (par.store()) {
-            this.setVariable(v);
-            update(par.parameter_type);
-          }
-        };
-      })
-      this.pars[v].elem.on("focusout", e => {
-        this.setVariable(v);
-      })
+      let par = this.pars[v];
+      par.on_store = () => {this.setVariable(v)};
     })
   }
+
+  get numberPoints () {
+    return this.pars.numberPoints.val;
+  }
+  get acquisitionTime () {
+    return this.numberPoints * this.dwellTime;
+  }
   get dwellTime () {
-    return this.acquisitionTime / this.numberPoints;
+    return this.pars.dwellTime.val;
   }
   get spectralWidth () {
     return 1.0 / this.dwellTime;
@@ -506,90 +499,34 @@ class AcquisitionParameters {
   get carrierFrequency () {
     return this.pars.carrierFrequency.val;
   }
-  set carrierFrequency (value) {
-    this.pars.carrierFrequency.val = value;
-  }
 
   quadrature () {
     return $("#quadratureDetection").is($(":checked"));
   }
 
-  validate (variable, revert) {
-    if (this.lastSet==variable) {
-      if (this.lastLastSet==variable) {
-        this.lastLastSet = revert;
-      }
-      this.lastSet = this.lastLastSet;
-    }
-  }
-  storeCurrent () {
-    this.variables.forEach( v => {
-      if ( $(`#${v}`).is(":focus") ) {
-        this.setVariable(v, $(`#${v}`).val())
-      }
-    })
-  }
-  populate () {
-    this.pars.numberPoints.set_field(this.numberPoints);
-    this.pars.acquisitionTime.set_field(this.acquisitionTime);
-    this.pars.dwellTime.set_field(this.dwellTime);
-    this.pars.spectralWidth.set_field(this.spectralWidth)
-  }
   setVariable (variable) {
     switch (variable) {
       case "numberPoints":
-      this.setNumberPoints(this.pars.numberPoints.val);
+      this.pars.acquisitionTime.store(this.acquisitionTime, false);
+      this.pars.acquisitionTime.set_field();
       break;
       case "acquisitionTime":
-      this.setAcquisitionTime(this.pars.acquisitionTime.val);
+      this.pars.numberPoints.store(this.pars.acquisitionTime.val / this.dwellTime, false);
+      this.pars.numberPoints.set_field();
       break;
       case "dwellTime":
-      this.setDwellTime(this.pars.dwellTime.val);
+      this.pars.spectralWidth.store(this.spectralWidth, false);
+      this.pars.spectralWidth.set_field();
+      this.pars.acquisitionTime.store(this.acquisitionTime, false);
+      this.pars.acquisitionTime.set_field();
       break;
       case "spectralWidth":
-      this.setSpectralWidth(this.pars.spectralWidth.val);
+      this.pars.dwellTime.store(1.0 / this.pars.spectralWidth.val, false);
+      this.pars.dwellTime.set_field();
+      this.pars.acquisitionTime.store(this.acquisitionTime, false);
+      this.pars.acquisitionTime.set_field();
       break;
     }
-  }
-  setNumberPoints (value) {
-    this.validate("numberPoints", "acquisitionTime");
-
-    if (this.lastSet!="acquisitionTime") {
-      this.acquisitionTime = this.dwellTime * value;
-    }
-    this.numberPoints = Math.round(value);
-
-    this.lastLastSet = this.lastSet;
-    this.lastSet = "numberPoints";
-    this.populate();
-  }
-  setAcquisitionTime (value) {
-    this.validate("acquisitionTime", "numberPoints");
-
-    if (this.lastSet!="numberPoints") {
-      this.numberPoints = Math.round(value / this.dwellTime);
-    }
-    this.acquisitionTime = value;
-
-    this.lastLastSet = this.lastSet;
-    this.lastSet = "acquisitionTime"; 
-    this.populate();
-  }
-  setSpectralWidth (value) {
-    this.validate("spectralWidth", "acquisitionTime");
-    if (this.lastSet=="numberPoints") {
-      this.acquisitionTime = this.numberPoints / value;
-    }
-    else {
-      this.numberPoints = Math.round(this.acquisitionTime * value);
-    }
-
-    this.lastLastSet = this.lastSet;
-    this.lastSet = "spectralWidth";
-    this.populate();
-  }
-  setDwellTime (value) {
-    this.setSpectralWidth(1.0/value);
   }
 }
 
