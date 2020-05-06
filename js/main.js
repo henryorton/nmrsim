@@ -1,3 +1,4 @@
+console.log(window.location.href);
 
 // Global variables
 const ArrayType = Float64Array;
