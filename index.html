@@ -22,19 +22,19 @@
 
           <input type="radio" id="spin0-amplitudeCheck" name="checkVar">
           <label>I</label>
-          <input type="text" class="amplitude" value="1"><br>
+          <input type="text" class="amplitude" id="spin0-amplitude" value="1"><br>
 
           <input type="radio" id="spin0-offsetCheck" name="checkVar">
           <label>&Omega;/2&pi; (Hz)</label>
-          <input type="text" class="offset" value="2"><br>
+          <input type="text" class="offset" id="spin0-offset" value="2"><br>
 
           <input type="radio" id="spin0-phaseCheck" name="checkVar">
           <label>&Phi; (&#176;)</label>
-          <input type="text" class="phase" value="0"><br>
+          <input type="text" class="phase" id="spin0-phase" value="0"><br>
 
           <input type="radio" id="spin0-t2Check" name="checkVar">
           <label>T2 (s)</label>
-          <input type="text" class="t2" value="0.5"><br>
+          <input type="text" class="t2" id="spin0-t2" value="0.5"><br>
         </fieldset>
 
         <fieldset class="spin spin1">
@@ -42,19 +42,19 @@
 
           <input type="radio" id="spin1-amplitudeCheck" name="checkVar">
           <label>I</label>
-          <input type="text" class="amplitude" value="0.0"><br>
+          <input type="text" class="amplitude" id="spin1-amplitude" value="0.0"><br>
 
           <input type="radio" id="spin1-offsetCheck" name="checkVar">
           <label>&Omega;/2&pi; (Hz)</label>
-          <input type="text" class="offset" value="-2"><br>
+          <input type="text" class="offset" id="spin1-offset" value="-2"><br>
 
           <input type="radio" id="spin1-phaseCheck" name="checkVar">
           <label>&Phi; (&#176;)</label>
-          <input type="text" class="phase" value="0"><br>
+          <input type="text" class="phase" id="spin1-phase" value="0"><br>
 
           <input type="radio" id="spin1-t2Check" name="checkVar">
           <label>T2 (s)</label>
-          <input type="text" class="t2" value="1"><br>
+          <input type="text" class="t2" id="spin1-t2" value="1"><br>
         </fieldset>
 
         <input type="radio" id="experimentalNoiseCheck" name="checkVar">
@@ -171,6 +171,10 @@
       <input id="slider-max" type="text" value="1">
     </fieldset>
 
+    <div class="buttons">
+      <button onclick="update('acquisition')">Plot</button>
+      <button onclick="get_parameters_url()">Set URL with current params</button>
+    </div>
 
 
   </div>

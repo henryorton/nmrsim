@@ -1,4 +1,4 @@
-console.log(window.location.href);
+// console.log(window.location.href);
 
 // Global variables
 const ArrayType = Float64Array;
@@ -14,6 +14,7 @@ const procDataBuffer = new ArrayBuffer(MAX_BYTES);
 
 
 $(document).ready( () => {
+  set_parameters_url();
   initAll();
   $(document).on("keypress", e => {
     if (e.which==13 && !$(e.target).hasClass("parameter")) {
@@ -22,6 +23,25 @@ $(document).ready( () => {
   })
 });
 
+
+function get_parameters_url () {
+  var pars = {};
+  $("input[type='text'], #windowFunction").each(function(){
+    pars[this.id] = $(this).val();
+  })
+  window.location.search = $.param(pars);
+}
+
+function set_parameters_url () {
+  var params = {};
+  window.location.search.substr(1).split("&").forEach(item => {params[item.split("=")[0]] = item.split("=")[1]})
+  $("input[type='text'], #windowFunction").each(function(){
+    let val = params[this.id];
+    if (val!=null) {
+      $(this).val(val);
+    }
+  })
+}
 
 function initSignalArray(acquisitionPoints) {
   let n = acquisitionPoints;

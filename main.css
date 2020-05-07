@@ -163,9 +163,14 @@ h1 {
 }
 
 
+.buttons {
+  margin:6px;
+  padding:4px;
+}
 
-
-
+button {
+  width: 48%;
+}
 
 
 
