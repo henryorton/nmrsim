@@ -442,6 +442,10 @@ class ProcessParameters {
       this.windowName = e.target.value;
       $(`.window.${this.windowName}`).show(100);
     })
+
+    $(".window").css("display", "grid")
+    $(".window").hide();
+    $(`.window.${this.windowName}`).show();
   }
 
   get window () {
@@ -634,11 +638,14 @@ function backCalculateSignal () {
 
 function initPlot (canvas_id) {
 
-  var canvas = d3.select(canvas_id);
+  var canvas = d3.select(canvas_id)
+    .attr("preserveAspectRatio", "xMinYMin meet")
+
   var svg = canvas.append("g").attr("class", "frame")
   var margin = {top: 20, right: 20, bottom: 40, left: 30};
-  var width = canvas.attr("width") - margin.left - margin.right;
-  var height = canvas.attr("height") - margin.top - margin.bottom;
+  var [w0, h0, w1, h1] = canvas.attr("viewBox").split(' ').map(Number);
+  var width = w1 - margin.left - margin.right;
+  var height = h1 - margin.top - margin.bottom;
 
   svg.attr("transform", `translate(${margin.left}, ${margin.top})`);
 
@@ -659,10 +666,10 @@ function initPlot (canvas_id) {
     .attr("class", "line_processing")
 
   svg.append("path")
-    .attr("class", "line_imag")
+    .attr("class", "line-imag")
 
   svg.append("path")
-    .attr("class", "line_real")
+    .attr("class", "line-real")
 
   if (canvas_id=="#plot-time-domain-svg") {
     var xLabel = "Time /s";
@@ -686,8 +693,8 @@ function initPlot (canvas_id) {
     height: height,
     xScale: xScale,
     yScale: yScale,
-    real: svg.select(".line_real"),
-    imag: svg.select(".line_imag"),
+    real: svg.select(".line-real"),
+    imag: svg.select(".line-imag"),
     proc: svg.select(".line_processing"),
     xaxis: svg.select(".x_axis"),
     yaxis: svg.select(".y_axis"),
@@ -830,11 +837,14 @@ function updateFreqDomainPlot (plot) {
 
 function initVectorPlot () {
 
-  var canvas = d3.select("#plot-spin-vector-svg");
+  var canvas = d3.select("#plot-spin-vector-svg")
+    .attr("preserveAspectRatio", "xMinYMin meet");
+
   var svg = canvas.append("g").attr("class", "frame")
   var margin = {top: 40, right: 40, bottom: 20, left: 20};
-  var width = canvas.attr("width") - margin.left - margin.right;
-  var height = canvas.attr("height") - margin.top - margin.bottom;
+  var [w0, h0, w1, h1] = canvas.attr("viewBox").split(' ').map(Number);
+  var width = w1 - margin.left - margin.right;
+  var height = h1 - margin.top - margin.bottom;
   var radius = 0.5*height;
   
   svg.attr("transform", `translate(${margin.left+0.5*width}, ${margin.top+0.5*height})`);
@@ -845,16 +855,16 @@ function initVectorPlot () {
     .attr("fill", "none");
 
   svg.append("g")
-    .attr("class", "line_real")
+    .attr("class", "line-real")
     .append("line")
     .attr("x2", radius+25)
-    .attr("marker-end", appendArrowheadMarker(svg, "line_real"));
+    .attr("marker-end", appendArrowheadMarker(svg, "line-real"));
 
   svg.append("g")
-    .attr("class", "line_imag")
+    .attr("class", "line-imag")
     .append("line")
     .attr("y2", -radius-25)
-    .attr("marker-end", appendArrowheadMarker(svg, "line_imag"));
+    .attr("marker-end", appendArrowheadMarker(svg, "line-imag"));
 
   spins.forEach( (spin, i) => {
     let spinG = svg.append("g")
@@ -901,7 +911,7 @@ function initVectorPlot () {
     .attr("alignment-baseline", "middle")
 
   realG.append("line")
-    .attr("class", "line_real")
+    .attr("class", "line-real")
     .attr("x1", 35)
     .attr("x2", legw)
 
@@ -913,7 +923,7 @@ function initVectorPlot () {
     .attr("height", legh)
     .attr("y", -legh*0.5)
     .on("click", () => {
-      let sele = d3.selectAll(".line_real")
+      let sele = d3.selectAll(".line-real")
       let opac = parseFloat(sele.style("opacity"))
       if (opac < 0.5){
          sele.transition()
@@ -939,7 +949,7 @@ function initVectorPlot () {
     .attr("alignment-baseline", "middle")
 
   imagG.append("line")
-    .attr("class", "line_imag")
+    .attr("class", "line-imag")
     .attr("x1", 35)
     .attr("x2", legw)
 
@@ -951,7 +961,7 @@ function initVectorPlot () {
     .attr("height", legh)
     .attr("y", -legh*0.5)
     .on("click", () => {
-      let sele = d3.selectAll(".line_imag")
+      let sele = d3.selectAll(".line-imag")
       let opac = parseFloat(sele.style("opacity"))
       if (opac < 0.5){
          sele.transition()

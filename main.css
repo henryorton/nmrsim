@@ -1,17 +1,192 @@
 
+/*
+$color1: #c41515; red
+$color2: #341acc; blue
+$color3: #353238; dark
+$color4: #b4c5e4; light
+$color5: #ffffff; white
+*/
+
+:root {
+  --dark: #353238;
+  --adark: #a5dbe4;
+  --light: #ffffff;
+  --alight: #E7F9FC;
+  --pop1: #c41515;
+  --pop2: #341acc;
+  --pop3: #00ff00;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  font-family: serif;
+}
+
+label {
+  font-size: 11pt;
+}
+
+input[type="text"] {
+  width: 40px;
+  padding: 1px 1px 1px 2px;
+  position: relative;
+  bottom: 1px;
+}
+
+header {
+  padding: 10px 10%;
+  display: grid;
+  grid-template-columns: auto auto;
+}
+
+header h5 {
+  margin: 0px 5px;
+}
+
+header .links {
+  margin: auto 5px auto auto;
+}
+
+header .links a {
+  font-size: 14pt;
+  margin: 3px;
+  padding: 5px;
+  border: 1px solid var(--dark);
+  border-radius: 5px;
+}
+
+header .links a:hover {
+  border-color: var(--adark);
+}
+
+.main-content {
+  margin: 10px auto;
+  width: 80%;
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  min-width: 800px;
+}
+
+.bg-dark {
+  background-color: var(--dark);
+}
+
+.fg-dark {
+  color: var(--dark);
+}
+
+.bg-light {
+  background-color: var(--light);
+}
+
+.fg-light {
+  color: var(--light);
+}
+
+.bg-alight {
+  background-color: var(--alight);
+}
+
+.fg-alight {
+  color: var(--alight);
+}
+
+.line-real {
+  stroke: var(--pop1);
+  stroke-width: 1;
+  fill: none;
+}
+
+.line-real.arrowhead  {
+  fill: var(--pop1);
+  stroke-width: 0;
+}
+
+.line-imag {
+  stroke: var(--pop2);
+  stroke-width: 1;
+  fill: none;
+}
+
+.line-imag.arrowhead {
+  fill: var(--pop2);
+  stroke-width: 0;
+}
+
+a {
+  color: var(--dark);
+  text-decoration: none;
+}
+
+a:visited {
+  color: var(--dark);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--adark);
+}
+
+fieldset {
+  margin: 5px;
+  border: 2px solid var(--adark);
+  padding: 4px 5px 0px 5px;
+  border-radius: 5px;
+}
+
+legend {
+  margin: 0px 5px;
+  padding: 0px 2px;
+}
+
+
+.parameter-input {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas: "spins spins" "acqu proc" "slider slider" "buttplot butturl";
+}
+
+.spins {
+  grid-area: spins;
+}
+
+.spins .container {
+  display: grid;
+  grid-template-columns: 40% 60%;
+  grid-template-areas: "spin0 vecplot" "spin1 vecplot";
+}
+
+.spin0 {
+  grid-area: spin0;
+}
+
+.spin1 {
+  grid-area: spin1;
+}
+
+.plot-spin-vector {
+  grid-area: vecplot;
+}
+
+.spin {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  grid-gap: 3px 0px;
+}
 
 .plot-spin-vector .circle {
-  stroke:black;
+  stroke:var(--dark);
   stroke-width: 1;
 }
 
 .plot-spin-vector .vector {
-  stroke: black;
+  stroke: var(--dark);
   stroke-width: 1;
 }
 
 .plot-spin-vector .vector.arrowhead{
-  stroke: black;
+  stroke: var(--dark);
   stroke-width: 0;
 }
 
@@ -25,160 +200,112 @@
   stroke-width: 0;
 }
 
-.line_real {
-  fill: none;
-  stroke: #ff0000;
-  stroke-width: 1;
-}
-
-.line_real.arrowhead  {
-  fill:#ff0000;
-  stroke-width:0;
-}
-
-.line_imag {
-    fill: none;
-    stroke: #0000ff;
-    stroke-width: 1;
-}
-
-.line_imag.arrowhead  {
-  fill:#0000ff;
-  stroke-width:0;
-}
-
-.line_processing {
-    fill: none;
-    stroke: #00ff00;
-    stroke-width: 1;
-}
-
-.spins .param {
-  width: 40px;
-}
-
-.plot-time-domain {
-  overflow:hidden;
-}
-
-.plot-freq-domaim {
-  overflow: hidden;
-}
-
-.plot-spin-vector {
-  overflow: hidden;
-}
-
-fieldset {
-  margin: 6px;
-  padding: 4px;
-}
-
-
-input[type='text'] {
-  margin:2px;
-  width:45px;
-}
-
-.spins .parameters {
-  width:36%;
-  float: left;
-}
-
-.plot-spin-vector {
-  width:60%;
-  float: left;
-}
-
-.mouse-line {
-  stroke: black;
-  stroke-width: 1px;
-}
-
-.window {
-  display:none;
-}
-
-.parameter-input {
-  float: left;
-  width: 45%;
-}
-
-.plots {
-  float:left;
-  width: 55%;
-}
-
-
-body { 
-  width: 100%;
-  max-width: 1100px;
-  margin: auto;
-  background-color: #ffffdd;
-}
-
-.acqu-proc-div {
-  width:100%;
-}
 
 .acquisitionParameters {
-  width:45%;
-  float:left;
+  grid-area: acqu;
+}
+
+.acquisitionParameters .container {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  grid-gap: 4px 0px;
+}
+
+.processingParameters .container {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  grid-gap: 4px 0px;
+}
+
+.spin {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  grid-gap: 4px 0px;
 }
 
 .processingParameters {
-  width:45%;
-  float:left;
-}
-
-.window img {
-  display:block;
-  padding-top:10px;
-  /*height:20px;*/
-  margin-left:auto;
-  margin-right:auto;
-}
-
-
-
-#slider-bar {
-  width:70%;
-  margin:6px;
+  grid-area: proc;
 }
 
 .slider {
-  width:95%;
-  float:bottom;
+  grid-area: slider;
+}
+
+.slider .container {
+  display: grid;
+  grid-template-columns: 1fr 8fr 1fr;
+  grid-gap: 0px 3px;
+}
+
+.button.plot {
+  grid-area: buttplot;
+}
+
+.button.url {
+  grid-area: butturl;
+}
+
+#slider-bar {
+  min-width: none;
+}
+
+.windowfunc {
+  padding-top: 5px;
 }
 
 
-label {
-  font-size: 11pt;
+
+
+
+.window {
+  display: none;
+  grid-template-columns: auto auto auto;
+  grid-gap: 3px 0px;
+}
+
+.window img {
+  grid-column: 1 / span 3;
+  margin: 0px auto;
+  padding: 10px 0px;
+}
+
+input[type="radio"] {
+  position: relative;
+  top: 2px;
 }
 
 
-h1 {
-  margin: 10px;
-  font-size: 20pt;
+.button {
+  margin: 5px;
+  border: 2px solid var(--adark);
+  border-radius: 5px;
+  background-color: var(--light);
 }
 
-
-.buttons {
-  margin:6px;
-  padding:4px;
+button:hover.button {
+  background-color: var(--adark);
+  color: var(--light);
 }
 
-button {
-  width: 48%;
+.plots fieldset {
+  padding: 0;
 }
 
+.line_processing {
+  fill: none;
+  stroke: var(--pop3);
+  stroke-width: 1;
+}
 
+.mouse-line {
+  stroke: var(--dark);
+  stroke-width: 1px;
+}
 
-
-
-
-
-
+.pointer {
+  stroke: none;
+  fill: var(--dark);
+}
 
 
 

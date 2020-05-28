@@ -4,199 +4,226 @@
   <head>
     <title>NMRsim</title>
   </head>
-  <body>
 
-  <header>
-    <h1>NMRsim - visualising 1D acquisition and processing. <a href="static/nmrsim_help.pdf" target="_blank">Help</a>. <a href="https://github.com/henryorton/nmrsim" target="_blank">About</a>
-    </h1>
-  </header>
+  <body class="bg-light fg-dark">
+    <header class="bg-alight">
+        <div class="title">
+          <a href="https://henryorton.github.io/nmrsim/">
+            <img src="static/logo.svg" width="200px">
+          </a>
+          <h5>Visualising 1D acquisition and processing</h5>
+        </div>
+        <div class="links fg-dark">
+          <a href="static/nmrsim_help.pdf" target="_blank">Help</a>
+          <a href="https://github.com/henryorton/nmrsim" target="_blank">About</a>
+        </div>
+    </header>
 
-  <div class="parameter-input">
+    <div class="main-content">
+      <div class="parameter-input">
 
-    <fieldset class="spins">
-      <legend>Spins</legend>
-      <div class="parameters">
+        <fieldset class="spins">
+          <legend>Spins</legend>
+          <div class="container">
 
-        <fieldset class="spin spin0">
-          <legend>Spin I:</legend>
+            <fieldset>
+              <legend>Spin I:</legend>
+              <div class="spin spin0">
+                <input type="radio" id="spin0-amplitudeCheck" name="checkVar">
+                <label>I</label>
+                <input type="text" class="amplitude" id="spin0-amplitude" value="1">
+                <label></label>
 
-          <input type="radio" id="spin0-amplitudeCheck" name="checkVar">
-          <label>I</label>
-          <input type="text" class="amplitude" id="spin0-amplitude" value="1"><br>
+                <input type="radio" id="spin0-offsetCheck" name="checkVar">
+                <label>&nu;</label>
+                <input type="text" class="offset" id="spin0-offset" value="2">
+                <label>Hz</label>
 
-          <input type="radio" id="spin0-offsetCheck" name="checkVar">
-          <label>&Omega;/2&pi; (Hz)</label>
-          <input type="text" class="offset" id="spin0-offset" value="2"><br>
+                <input type="radio" id="spin0-phaseCheck" name="checkVar">
+                <label>&Phi;</label>
+                <input type="text" class="phase" id="spin0-phase" value="0">
+                <label>&#176;</label>
 
-          <input type="radio" id="spin0-phaseCheck" name="checkVar">
-          <label>&Phi; (&#176;)</label>
-          <input type="text" class="phase" id="spin0-phase" value="0"><br>
+                <input type="radio" id="spin0-t2Check" name="checkVar">
+                <label>T2</label>
+                <input type="text" class="t2" id="spin0-t2" value="0.5">
+                <label>s</label>
+              </div>
+            </fieldset>
 
-          <input type="radio" id="spin0-t2Check" name="checkVar">
-          <label>T2 (s)</label>
-          <input type="text" class="t2" id="spin0-t2" value="0.5"><br>
+            <fieldset>
+              <legend>Spin II:</legend>
+              <div class="spin spin1">
+                <input type="radio" id="spin1-amplitudeCheck" name="checkVar">
+                <label>I</label>
+                <input type="text" class="amplitude" id="spin1-amplitude" value="0.0">
+                <label></label>
+
+                <input type="radio" id="spin1-offsetCheck" name="checkVar">
+                <label>&nu;</label>
+                <input type="text" class="offset" id="spin1-offset" value="-2">
+                <label>Hz</label>
+
+                <input type="radio" id="spin1-phaseCheck" name="checkVar">
+                <label>&Phi;</label>
+                <input type="text" class="phase" id="spin1-phase" value="0">
+                <label>&#176;</label>
+
+                <input type="radio" id="spin1-t2Check" name="checkVar">
+                <label>T2</label>
+                <input type="text" class="t2" id="spin1-t2" value="1">
+                <label>s</label>
+              </div>
+            </fieldset>
+
+            <div class="plot-spin-vector">
+              <svg id="plot-spin-vector-svg" viewBox="0 0 280 280"></svg>
+            </div>
+
+          </div>
         </fieldset>
 
-        <fieldset class="spin spin1">
-          <legend>Spin II:</legend>
+        <fieldset class="acquisitionParameters">
+          <legend>Acquisition parameters</legend>
+          <div class="container">
 
-          <input type="radio" id="spin1-amplitudeCheck" name="checkVar">
-          <label>I</label>
-          <input type="text" class="amplitude" id="spin1-amplitude" value="0.0"><br>
+            <input type="radio" id="numberPointsCheck" name="checkVar">
+            <label for="numberPoints">Number points</label>
+            <input id="numberPoints" type="text" value="256">
+            <label for="numberPoints"></label>
 
-          <input type="radio" id="spin1-offsetCheck" name="checkVar">
-          <label>&Omega;/2&pi; (Hz)</label>
-          <input type="text" class="offset" id="spin1-offset" value="-2"><br>
+            <input type="radio" id="acquisitionTimeCheck" name="checkVar">
+            <label for="acquisitionTime">Acquisition time</label>
+            <input type="text" id="acquisitionTime" value="1">
+            <label for="acquisitionTime">s</label>
 
-          <input type="radio" id="spin1-phaseCheck" name="checkVar">
-          <label>&Phi; (&#176;)</label>
-          <input type="text" class="phase" id="spin1-phase" value="0"><br>
+            <input type="radio" id="spectralWidthCheck" name="checkVar">
+            <label for="spectralWidth">Spectral width</label>
+            <input type="text" id="spectralWidth" value="256">
+            <label for="spectralWidth">Hz</label>
 
-          <input type="radio" id="spin1-t2Check" name="checkVar">
-          <label>T2 (s)</label>
-          <input type="text" class="t2" id="spin1-t2" value="1"><br>
+            <input type="radio" id="dwellTimeCheck" name="checkVar">
+            <label for="dwellTime">Dwell time</label>
+            <input type="text" id="dwellTime" value="0.00390625">
+            <label for="dwellTime">s</label>
+
+            <input type="radio" id="carrierFrequencyCheck" name="checkVar">
+            <label for="carrierFrequency">Carrier freq.</label>
+            <input type="text" id="carrierFrequency" value="0">
+            <label for="carrierFrequency">Hz</label>
+
+            <input type="radio" id="experimentalNoiseCheck" name="checkVar">
+            <label for="experimentalNoise">Noise</label>
+            <input id="experimentalNoise" type="text" value="0.0">
+            <label for="experimentalNoise">&sigma;</label>
+
+            <label for="quadratureDetection"></label>
+            <label for="quadratureDetection" >Quadrature</label>
+            <input id="quadratureDetection" type="checkbox" checked>
+          </div>
         </fieldset>
 
-        <input type="radio" id="experimentalNoiseCheck" name="checkVar">
-        <label for="experimentalNoise">Noise (&sigma;):</label>
-        <input id="experimentalNoise" type="text" value="0.0"><br>
+        <fieldset class="processingParameters">
+          <legend>Processing parameters</legend>
+          <div class="container">
+
+            <input type="radio" id="zeroFillingCheck" name="checkVar">
+            <label for="zeroFilling">Zero fill</label>
+            <input id="zeroFilling" type="text" value="0">
+            <label for="zeroFilling"></label>
+
+            <input type="radio" id="phaseCorrection0Check" name="checkVar">
+            <label for="phaseCorrection0">Ph. corr. 0</label>
+            <input type="text" id="phaseCorrection0" value="0">
+            <label for="phaseCorrection0">&#176;</label>
+
+            <input type="radio" id="phaseCorrection1Check" name="checkVar">
+            <label for="phaseCorrection1">Ph. corr. 1</label>
+            <input type="text" id="phaseCorrection1" value="0">
+            <label for="phaseCorrection1">&#176;</label>
+
+          </div>
+
+          <div class="windowfunc">
+            <label for="windowFunction"></label>
+            <label for="windowFunction">Window</label>
+            <select id="windowFunction">
+              <option value="none">None</option>
+              <option value="exponential">Exponential</option>
+              <option value="gaussian">Gaussian</option>
+              <option value="trigonometric">Trigonometric</option>
+            </select>
+
+            <div class="window none">
+            </div>
+
+            <div class="window exponential">
+              <img src="static/exp.svg" width="40%">
+
+              <input type="radio" id="exp_aCheck" name="checkVar">
+              <label for="exp_a">a:</label>
+              <input id="exp_a" type="text" value="1">
+            </div>
+
+            <div class="window trigonometric">
+              <img src="static/trig.svg" width="100%">
+
+              <input type="radio" id="trig_aCheck" name="checkVar">
+              <label for="trig_a">a:</label>
+              <input id="trig_a" type="text" value="0.5">
+
+              <input type="radio" id="trig_bCheck" name="checkVar">
+              <label for="trig_b">b:</label>
+              <input id="trig_b" type="text" value="0.95">
+
+              <input type="radio" id="trig_cCheck" name="checkVar">
+              <label for="trig_c">c:</label>
+              <input id="trig_c" type="text" value="2">
+            </div>
+
+            <div class="window gaussian">
+              <img src="static/gauss.svg" width="50%">
+
+              <input type="radio" id="gauss_aCheck" name="checkVar">
+              <label for="gauss_a">a:</label>
+              <input id="gauss_a" type="text" value="1">
+            </div>
+          </div>
+
+        </fieldset>
+
+        <fieldset class="slider">
+          <legend>Parameter slider</legend>
+          <div class="container">
+            <input id="slider-min" type="text" value="0">
+            <input type="range" min="0" max="200" value="50" id="slider-bar">
+            <input id="slider-max" type="text" value="1">
+          </div>
+        </fieldset>
+
+        <button class="button plot" onclick="update('acquisition')">Plot</button>
+        <button class="button url" onclick="get_parameters_url()">Save parameters to URL</button>
 
       </div>
-      <div class="plot-spin-vector">
-        <svg id="plot-spin-vector-svg" width="280" height="280"></svg>
+
+      <div class="plots">
+        <fieldset class="plot-time-domain">
+          <legend>Time domain</legend>
+          <svg id="plot-time-domain-svg" viewBox="0 0 600 250" preserveAspectRatio="xMinYMin meet"></svg>
+        </fieldset>
+
+        <fieldset class="plot-freq-domain">
+          <legend>Frequency domain</legend>
+          <svg id="plot-freq-domain-svg" viewBox="0 0 600 250" preserveAspectRatio="xMinYMin meet"></svg>
+        </fieldset>
+
       </div>
-    </fieldset>
-
-    <div class="acqu-proc-div">
-
-      <fieldset class="acquisitionParameters">
-        <legend>Acquisition parameters</legend>
-
-        <input type="radio" id="numberPointsCheck" name="checkVar">
-        <label for="numberPoints">Number points:</label>
-        <input id="numberPoints" type="text" value="256"><br>
-
-        <input type="radio" id="acquisitionTimeCheck" name="checkVar">
-        <label for="acquisitionTime">Acquisition time (s):</label>
-        <input type="text" id="acquisitionTime" value="1"><br>
-
-        <input type="radio" id="spectralWidthCheck" name="checkVar">
-        <label for="spectralWidth">Spectral width (Hz):</label>
-        <input type="text" id="spectralWidth" value="256"><br>
-
-        <input type="radio" id="dwellTimeCheck" name="checkVar">
-        <label for="dwellTime">Dwell time (s):</label>
-        <input type="text" id="dwellTime" value="0.00390625"><br>
-
-        <input type="radio" id="carrierFrequencyCheck" name="checkVar">
-        <label for="carrierFrequency">Carrier freq. (Hz):</label>
-        <input type="text" id="carrierFrequency" value="0"><br>
-
-        <label for="quadratureDetection" >Quadrature detection:</label>
-        <input id="quadratureDetection" type="checkbox" checked><br>
-
-      </fieldset>
-
-      <fieldset class="processingParameters">
-        <legend>Processing parameters</legend>
-
-        <input type="radio" id="zeroFillingCheck" name="checkVar">
-        <label for="zeroFilling">Zero filling:</label>
-        <input id="zeroFilling" type="text" value="0"><br>
-
-        <input type="radio" id="phaseCorrection0Check" name="checkVar">
-        <label for="phaseCorrection0">Phase corr. 0th (&#176;):</label>
-        <input type="text" id="phaseCorrection0" value="0"><br>
-
-        <input type="radio" id="phaseCorrection1Check" name="checkVar">
-        <label for="phaseCorrection1">Phase corr. 1st (&#176;):</label>
-        <input type="text" id="phaseCorrection1" value="0"><br>
-
-        <label for="windowFunction">Window function:</label>
-        <select id="windowFunction">
-          <option value="none">None</option>
-          <option value="exponential">Exponential</option>
-          <option value="gaussian">Gaussian</option>
-          <option value="trigonometric">Trigonometric</option>
-        </select><br>
-
-        <div class="window none">
-        </div>
-
-        <div class="window exponential">
-          <img src="static/exp.svg" height="25px"><br>
-
-          <input type="radio" id="exp_aCheck" name="checkVar">
-          <label for="exp_a">a:</label>
-          <input id="exp_a" type="text" value="1"><br>
-
-        </div>
-
-        <div class="window trigonometric">
-          <img src="static/trig.svg" height="40px"><br>
-
-          <input type="radio" id="trig_aCheck" name="checkVar">
-          <label for="trig_a">a:</label>
-          <input id="trig_a" type="text" value="0.5"><br>
-
-          <input type="radio" id="trig_bCheck" name="checkVar">
-          <label for="trig_b">b:</label>
-          <input id="trig_b" type="text" value="0.95"><br>
-
-          <input type="radio" id="trig_cCheck" name="checkVar">
-          <label for="trig_c">c:</label>
-          <input id="trig_c" type="text" value="2"><br>
-
-        </div>
-
-        <div class="window gaussian">
-          <img src="static/gauss.svg" height="28px"><br>
-
-          <input type="radio" id="gauss_aCheck" name="checkVar">
-          <label for="gauss_a">a:</label>
-          <input id="gauss_a" type="text" value="1"><br>
-
-        </div>
-
-      </fieldset>
-
     </div>
-
-
-    <fieldset class="slider">
-      <legend>Parameter slider</legend>
-
-      <input id="slider-min" type="text" value="0">
-      <input type="range" min="0" max="200" value="50" id="slider-bar">
-      <input id="slider-max" type="text" value="1">
-    </fieldset>
-
-    <div class="buttons">
-      <button onclick="update('acquisition')">Plot</button>
-      <button onclick="get_parameters_url()">Set URL with current params</button>
-    </div>
-
-
-  </div>
-
-  <div class="plots">
-    <fieldset class="plot-time-domain">
-      <legend>Time domain</legend>
-      <svg id="plot-time-domain-svg" width="600" height="300"></svg>
-    </fieldset>
-
-    <fieldset class="plot-freq-domain">
-      <legend>Frequency domain</legend>
-      <svg id="plot-freq-domain-svg" width="600" height="300"></svg>
-    </fieldset>
-
-  </div>
 
   </body>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
   <script src="https://ajax.googleapis.com/ajax/libs/d3js/5.15.0/d3.min.js"></script>
   <script type="text/javascript" src="js/fft.js"></script>
   <script type="text/javascript" src="js/main.js"></script>
-
 
 </html>
